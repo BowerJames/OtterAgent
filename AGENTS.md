@@ -1,5 +1,7 @@
 # OtterAgent Development Guide
 
+This project is heavily inspired by [`@mariozechner/pi-coding-agent`](https://github.com/mariozechner/pi-coding-agent), which is included as a dev dependency. Its source code and documentation should be explored whenever planning new features or edits to understand patterns, architecture, and best practices.
+
 ## Repository Structure
 
 This is a Bun monorepo using workspaces. Packages live under `packages/`.
