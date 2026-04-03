@@ -15,5 +15,12 @@
 		"test": "bun test",
 		"dev": "tsc --watch"
 	},
-	"dependencies": {}
+	"dependencies": {
+		"@mariozechner/pi-agent-core": "^0.64.0",
+		"@mariozechner/pi-ai": "^0.64.0",
+		"just-bash": "^2.14.0"
+	},
+	"devDependencies": {
+		"@mariozechner/pi-coding-agent": "^0.64.0"
+	}
 }
