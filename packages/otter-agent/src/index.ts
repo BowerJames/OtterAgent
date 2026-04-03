@@ -56,6 +56,21 @@ export type {
 	TurnStartEvent,
 } from "./extensions/index.js";
 
+// AgentSession
+export {
+	AgentSession,
+	convertToLlm,
+	createCompactionSummaryMessage,
+	createCustomMessage,
+	wrapToolDefinition,
+} from "./session/index.js";
+export type {
+	AgentSessionEvent,
+	AgentSessionOptions,
+	CompactionSummaryMessage,
+	CustomMessage,
+} from "./session/index.js";
+
 // Re-exports from pi-agent-core
 export type {
 	AgentContext,
