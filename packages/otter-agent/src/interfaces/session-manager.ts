@@ -1,4 +1,5 @@
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
+import type { ImageContent, TextContent } from "@mariozechner/pi-ai";
 
 /**
  * A unique identifier for a session entry.
@@ -71,7 +72,8 @@ export interface SessionManager {
 	 * the conversation — their `content` is included by `buildSessionContext()`.
 	 *
 	 * @param customType - Extension identifier for filtering entries.
-	 * @param content - The message content sent to the LLM.
+	 * @param content - The message content sent to the LLM. Can be a plain
+	 *   string or an array of text/image content blocks.
 	 * @param display - Whether the message should be shown in the UI.
 	 *   `true` = visible with distinct styling, `false` = hidden.
 	 * @param details - Optional extension-specific metadata (not sent to LLM).
@@ -79,7 +81,7 @@ export interface SessionManager {
 	 */
 	appendCustomMessageEntry(
 		customType: string,
-		content: string,
+		content: string | (TextContent | ImageContent)[],
 		display: boolean,
 		details?: unknown,
 	): EntryId;
@@ -119,3 +121,12 @@ export interface SessionManager {
 	 */
 	appendLabel(label: string, targetEntryId: EntryId): EntryId;
 }
+
+/**
+ * Read-only view of a SessionManager.
+ *
+ * Exposed to extensions in event handlers to prevent uncontrolled
+ * mutation of session state. Extensions should use the ExtensionsAPI
+ * methods (sendMessage, appendEntry, etc.) to write to the session.
+ */
+export type ReadonlySessionManager = Pick<SessionManager, "buildSessionContext">;
