@@ -246,24 +246,24 @@ describe("edit tool", () => {
 		expect((result.content[0] as { type: "text"; text: string }).text).toContain("const x = 99;");
 	});
 
-	test("throws when oldText is not found", async () => {
+	test("throws with actionable message when oldText is not found", async () => {
 		const env = makeEnv({ files: { "/f.ts": "const a = 1;" } });
 		await expect(
 			exec(env, "edit", {
 				path: "/f.ts",
 				edits: [{ oldText: "DOES_NOT_EXIST", newText: "x" }],
 			}),
-		).rejects.toThrow("not found");
+		).rejects.toThrow("match exactly including all whitespace and newlines");
 	});
 
-	test("throws when oldText matches multiple times", async () => {
+	test("throws with actionable message when oldText matches multiple times", async () => {
 		const env = makeEnv({ files: { "/f.ts": "x = 1;\nx = 1;" } });
 		await expect(
 			exec(env, "edit", {
 				path: "/f.ts",
 				edits: [{ oldText: "x = 1;", newText: "x = 2;" }],
 			}),
-		).rejects.toThrow();
+		).rejects.toThrow("provide more context to make it unique");
 	});
 
 	test("throws when file does not exist", async () => {
@@ -273,7 +273,74 @@ describe("edit tool", () => {
 				path: "/missing.ts",
 				edits: [{ oldText: "a", newText: "b" }],
 			}),
-		).rejects.toThrow("not found");
+		).rejects.toThrow("File not found");
+	});
+
+	test("throws when oldText is empty", async () => {
+		const env = makeEnv({ files: { "/f.ts": "const a = 1;" } });
+		await expect(
+			exec(env, "edit", {
+				path: "/f.ts",
+				edits: [{ oldText: "", newText: "x" }],
+			}),
+		).rejects.toThrow("must not be empty");
+	});
+
+	test("throws when edits produce no change", async () => {
+		const env = makeEnv({ files: { "/f.ts": "const a = 1;" } });
+		await expect(
+			exec(env, "edit", {
+				path: "/f.ts",
+				edits: [{ oldText: "const a = 1;", newText: "const a = 1;" }],
+			}),
+		).rejects.toThrow("No changes made");
+	});
+
+	test("throws when edits overlap", async () => {
+		const env = makeEnv({ files: { "/f.ts": "abcdef" } });
+		await expect(
+			exec(env, "edit", {
+				path: "/f.ts",
+				edits: [
+					{ oldText: "abcd", newText: "ABCD" },
+					{ oldText: "cdef", newText: "CDEF" },
+				],
+			}),
+		).rejects.toThrow("overlap");
+	});
+
+	test("preserves UTF-8 BOM on edit", async () => {
+		// File starts with BOM (\uFEFF) followed by content.
+		const env = makeEnv({ files: { "/f.ts": "\uFEFFconst a = 1;" } });
+		// First edit.
+		await exec(env, "edit", {
+			path: "/f.ts",
+			edits: [{ oldText: "const a = 1;", newText: "const a = 2;" }],
+		});
+		// The read tool strips BOM for display — verify the content change went through.
+		const result = await exec(env, "read", { path: "/f.ts" });
+		expect((result.content[0] as { type: "text"; text: string }).text).toContain("const a = 2;");
+		// Verify BOM did not corrupt the file by doing a second edit.
+		// If BOM was dropped or mangled, the stored content would differ and the
+		// second edit would either fail to find the text or produce wrong results.
+		await expect(
+			exec(env, "edit", {
+				path: "/f.ts",
+				edits: [{ oldText: "const a = 2;", newText: "const a = 3;" }],
+			}),
+		).resolves.toBeDefined();
+		const result2 = await exec(env, "read", { path: "/f.ts" });
+		expect((result2.content[0] as { type: "text"; text: string }).text).toContain("const a = 3;");
+	});
+
+	test("preserves CRLF line endings on edit", async () => {
+		const env = makeEnv({ files: { "/f.txt": "line1\r\nline2\r\nline3" } });
+		await exec(env, "edit", {
+			path: "/f.txt",
+			edits: [{ oldText: "line2", newText: "LINE2" }],
+		});
+		const rawContent = await exec(env, "bash", { command: "cat /f.txt | od -c | head -3" });
+		expect((rawContent.content[0] as { type: "text"; text: string }).text).toContain("\\r");
 	});
 
 	test("throws when pre-aborted", async () => {
@@ -288,5 +355,22 @@ describe("edit tool", () => {
 				controller.signal,
 			),
 		).rejects.toThrow();
+	});
+});
+
+// ─── read tool — truncation ───────────────────────────────────────────────────
+
+describe("read tool truncation", () => {
+	test("truncates output exceeding the line limit and includes continuation hint", async () => {
+		// Generate 2001 lines to exceed DEFAULT_MAX_LINES (2000)
+		const lines = Array.from({ length: 2001 }, (_, i) => `line${i + 1}`).join("\n");
+		const env = makeEnv({ files: { "/big.txt": lines } });
+		const result = await exec(env, "read", { path: "/big.txt" });
+		const text = (result.content[0] as { type: "text"; text: string }).text;
+		expect(text).toContain("offset=");
+		expect(result.details).toBeDefined();
+		expect((result.details as { truncation: { truncated: boolean } }).truncation.truncated).toBe(
+			true,
+		);
 	});
 });

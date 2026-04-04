@@ -116,7 +116,9 @@ function getEmptyOldTextError(path: string, editIndex: number, totalEdits: numbe
 
 function getNotFoundError(path: string, editIndex: number, totalEdits: number): Error {
 	const loc = totalEdits > 1 ? `edits[${editIndex}].oldText` : "oldText";
-	return new Error(`${loc} not found in ${path}.`);
+	return new Error(
+		`Could not find the exact text for ${loc} in ${path}. The old text must match exactly including all whitespace and newlines.`,
+	);
 }
 
 function getDuplicateError(
@@ -126,12 +128,14 @@ function getDuplicateError(
 	count: number,
 ): Error {
 	const loc = totalEdits > 1 ? `edits[${editIndex}].oldText` : "oldText";
-	return new Error(`${loc} appears ${count} times in ${path}. It must be unique.`);
+	return new Error(
+		`Found ${count} occurrences of the text for ${loc} in ${path}. The text must be unique. Please provide more context to make it unique.`,
+	);
 }
 
 function getNoChangeError(path: string, totalEdits: number): Error {
 	return new Error(
-		`Edit${totalEdits > 1 ? "s" : ""} produced no change in ${path}. The replacement text matches the original.`,
+		`No changes made to ${path} by edit${totalEdits > 1 ? "s" : ""}. The replacement produced identical content. This might indicate an issue with special characters or the text not existing as expected.`,
 	);
 }
 
