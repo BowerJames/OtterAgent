@@ -66,6 +66,7 @@ export {
 	buildSystemPrompt,
 	buildToolSection,
 	convertToLlm,
+	createAgentSession,
 	createCompactionSummaryMessage,
 	createCustomMessage,
 	ModelRegistry,
@@ -76,6 +77,7 @@ export type {
 	AgentSessionOptions,
 	BuildSystemPromptOptions,
 	CompactionSummaryMessage,
+	CreateAgentSessionResult,
 	CustomMessage,
 } from "./session/index.js";
 
