@@ -1,12 +1,20 @@
 // OtterAgent interfaces
 export type {
-	AgentEnvironment,
 	EntryId,
 	ReadonlySessionManager,
 	SessionContext,
 	ToolDefinition,
 	UIProvider,
 } from "./interfaces/index.js";
+
+// Built-in AgentEnvironment implementations.
+// AgentEnvironment is exported as both a type (the interface) and a value
+// (namespace with factory methods) via declaration merging in environments/agent-environment.ts.
+export {
+	AgentEnvironment,
+	JustBashAgentEnvironment,
+	type JustBashAgentEnvironmentOptions,
+} from "./environments/index.js";
 export { noOpUIProvider } from "./interfaces/ui.js";
 
 // Built-in AuthStorage implementations.
