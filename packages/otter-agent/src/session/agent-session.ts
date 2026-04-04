@@ -223,16 +223,29 @@ export class AgentSession {
 		// Build initial tool list
 		const tools = this._getActiveTools();
 
+		// Warn if agentOptions.initialState contains fields managed by AgentSession —
+		// they will be silently discarded. Point callers to the correct option.
+		const managedFields = ["systemPrompt", "model", "thinkingLevel", "tools", "messages"] as const;
+		if (options.agentOptions?.initialState) {
+			for (const field of managedFields) {
+				if (field in options.agentOptions.initialState) {
+					console.warn(
+						`[AgentSession] agentOptions.initialState.${field} is ignored — this field is managed by AgentSession. Use the dedicated AgentSessionOptions.${field} option instead.`,
+					);
+				}
+			}
+		}
+
 		// Create the pi-agent-core Agent
 		this.agent = new Agent({
 			...options.agentOptions,
 			initialState: {
-				systemPrompt,
+				...options.agentOptions?.initialState, // escape hatch — low priority
+				systemPrompt, // session values always win
 				model: options.model,
 				thinkingLevel: options.thinkingLevel ?? "off",
 				tools,
 				messages: options.messages ?? [],
-				...options.agentOptions?.initialState,
 			},
 			convertToLlm: options.agentOptions?.convertToLlm ?? convertToLlm,
 			getApiKey: (provider) => this.modelRegistry.getApiKey(provider),

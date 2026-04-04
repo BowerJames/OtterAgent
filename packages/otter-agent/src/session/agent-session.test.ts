@@ -348,6 +348,80 @@ describe("AgentSession", () => {
 		await session.dispose();
 	});
 
+	test("agentOptions.initialState managed fields are overridden by session values", async () => {
+		const messages: AgentMessage[] = [
+			{ role: "user", content: [{ type: "text", text: "Hello" }], timestamp: 1 },
+		];
+		const session = new AgentSession({
+			sessionManager: createMockSessionManager(),
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Correct prompt.",
+			thinkingLevel: "off",
+			messages,
+			agentOptions: {
+				initialState: {
+					systemPrompt: "Wrong prompt.",
+					model: { id: "wrong-model", provider: "wrong" } as Parameters<typeof session.setModel>[0],
+					thinkingLevel: "high",
+					tools: [],
+					messages: [],
+				},
+			},
+		});
+
+		expect(session.agent.state.systemPrompt).toBe("Correct prompt.");
+		expect(session.agent.state.thinkingLevel).toBe("off");
+		expect(session.agent.state.messages).toHaveLength(1);
+
+		await session.dispose();
+	});
+
+	test("agentOptions.initialState managed fields trigger a warning", async () => {
+		const originalWarn = console.warn;
+		const warnings: string[] = [];
+		console.warn = (msg: string) => warnings.push(msg);
+
+		try {
+			const session = new AgentSession({
+				sessionManager: createMockSessionManager(),
+				authStorage: createMockAuthStorage(),
+				environment: createMockEnvironment(),
+				systemPrompt: "Prompt.",
+				agentOptions: {
+					initialState: {
+						systemPrompt: "Override.",
+						messages: [],
+					},
+				},
+			});
+			await session.dispose();
+		} finally {
+			console.warn = originalWarn;
+		}
+
+		expect(warnings.some((w) => w.includes("systemPrompt"))).toBe(true);
+		expect(warnings.some((w) => w.includes("messages"))).toBe(true);
+	});
+
+	test("agentOptions.initialState non-managed fields pass through", async () => {
+		const session = new AgentSession({
+			sessionManager: createMockSessionManager(),
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+			agentOptions: {
+				initialState: {
+					error: "pre-seeded error",
+				},
+			},
+		});
+
+		expect(session.agent.state.error).toBe("pre-seeded error");
+
+		await session.dispose();
+	});
+
 	test("getSystemPrompt returns the current system prompt", async () => {
 		const session = new AgentSession({
 			sessionManager: createMockSessionManager(),
