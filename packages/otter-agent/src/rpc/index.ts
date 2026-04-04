@@ -39,3 +39,7 @@ export type {
 	// Transport
 	RpcTransport,
 } from "./types.js";
+
+export { RpcHandler } from "./rpc-handler.js";
+export type { RpcHandlerOptions } from "./rpc-handler.js";
+export { createRpcUIProvider } from "./rpc-ui-provider.js";
