@@ -25,6 +25,79 @@ import { ModelRegistry } from "./model-registry.js";
 import { buildSystemPrompt } from "./system-prompt.js";
 import { wrapToolDefinition } from "./tool-wrapper.js";
 
+/** Result of {@link createAgentSession}. */
+export interface CreateAgentSessionResult {
+	/** The created session. */
+	session: AgentSession;
+}
+
+/**
+ * Async factory that creates an AgentSession with session restore.
+ *
+ * Resolves the effective model and thinking level by consulting the
+ * SessionManager's saved state, falling back to explicit options or
+ * sensible defaults. Performs an auth check on any resolved model
+ * before passing it to the constructor.
+ *
+ * Consumers who don't need session restore can use the
+ * {@link AgentSession} constructor directly.
+ */
+export async function createAgentSession(
+	options: AgentSessionOptions,
+): Promise<CreateAgentSessionResult> {
+	const { sessionManager, authStorage } = options;
+
+	// 1. Build a ModelRegistry for resolution.
+	const registry = new ModelRegistry(authStorage);
+
+	// 2. Get saved session state.
+	const sessionContext = sessionManager.buildSessionContext();
+
+	// 3. Resolve effective model: explicit option > session context > undefined.
+	let model = options.model;
+	if (!model && sessionContext.model) {
+		model = registry.find(sessionContext.model.provider, sessionContext.model.modelId);
+	}
+
+	// 4. Auth check — discard the model if no credentials are available.
+	if (model && !(await registry.hasAuth(model))) {
+		model = undefined;
+	}
+
+	// 5. Resolve effective thinking level: explicit option > session context > "off".
+	let thinkingLevel: ThinkingLevel = options.thinkingLevel ?? sessionContext.thinkingLevel ?? "off";
+
+	// 6. Clamp thinking level when model doesn't support reasoning.
+	//    Only clamp when a model is resolved — leave as-is when model is undefined.
+	if (model && !model.reasoning) {
+		thinkingLevel = "off";
+	}
+
+	// 7. Persist model change if it differs from session context.
+	if (model) {
+		const ctxModel = sessionContext.model;
+		const modelChanged =
+			!ctxModel ||
+			ctxModel.provider !== model.provider ||
+			ctxModel.modelId !== model.id;
+		if (modelChanged) {
+			sessionManager.appendModelChange(
+				{ provider: model.provider, modelId: model.id },
+				thinkingLevel,
+			);
+		}
+	}
+
+	// 8. Persist thinking level change if it differs from session context.
+	if (thinkingLevel !== sessionContext.thinkingLevel) {
+		sessionManager.appendThinkingLevelChange(thinkingLevel);
+	}
+
+	// 9. Construct and return.
+	const session = new AgentSession({ ...options, model, thinkingLevel });
+	return { session };
+}
+
 /** Options for creating an AgentSession. */
 export interface AgentSessionOptions {
 	/** Session persistence manager. */

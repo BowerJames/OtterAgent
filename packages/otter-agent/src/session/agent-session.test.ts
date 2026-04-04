@@ -1,11 +1,14 @@
 import { describe, expect, mock, test } from "bun:test";
 import { Type } from "@sinclair/typebox";
+import type { ThinkingLevel } from "@mariozechner/pi-agent-core";
+import type { Api, Model } from "@mariozechner/pi-ai";
 import type { Extension } from "../extensions/extension.js";
 import type { AgentEnvironment } from "../interfaces/agent-environment.js";
 import type { AuthStorage } from "../interfaces/auth-storage.js";
 import type { SessionManager } from "../interfaces/session-manager.js";
 import type { ToolDefinition } from "../interfaces/tool-definition.js";
-import { AgentSession } from "./agent-session.js";
+import { AgentSession, createAgentSession } from "./agent-session.js";
+import { ModelRegistry } from "./model-registry.js";
 
 // ─── Test Helpers ─────────────────────────────────────────────────────
 
@@ -445,5 +448,247 @@ describe("AgentSession", () => {
 
 			await session.dispose();
 		});
+	});
+});
+
+// ─── createAgentSession() ─────────────────────────────────────────────
+
+/** Build a SessionManager mock whose buildSessionContext returns specific state. */
+function createContextSessionManager(ctx: {
+	model: { provider: string; modelId: string } | null;
+	thinkingLevel: ThinkingLevel;
+}): SessionManager {
+	let entryCounter = 0;
+	return {
+		appendMessage: mock(() => String(++entryCounter)),
+		buildSessionContext: mock(() => ({ messages: [], ...ctx })),
+		compact: mock(() => String(++entryCounter)),
+		appendCustomEntry: mock(() => String(++entryCounter)),
+		appendCustomMessageEntry: mock(() => String(++entryCounter)),
+		appendModelChange: mock(() => String(++entryCounter)),
+		appendThinkingLevelChange: mock(() => String(++entryCounter)),
+		appendLabel: mock(() => String(++entryCounter)),
+	};
+}
+
+describe("createAgentSession", () => {
+	test("no model in options or context — agent starts without a model", async () => {
+		const sm = createContextSessionManager({ model: null, thinkingLevel: "off" });
+		const { session } = await createAgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+		});
+
+		expect(session.agent.state.model).toBeUndefined();
+		await session.dispose();
+	});
+
+	test("explicit options.model is used directly", async () => {
+		const registry = new ModelRegistry(createMockAuthStorage());
+		const model = registry.getAll()[0];
+		if (!model) return; // guard: skip if pi-ai has no built-ins
+
+		const sm = createContextSessionManager({ model: null, thinkingLevel: "off" });
+		const { session } = await createAgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+			model,
+		});
+
+		expect(session.agent.state.model?.id).toBe(model.id);
+		await session.dispose();
+	});
+
+	test("model restored from session context via registry.find()", async () => {
+		const registry = new ModelRegistry(createMockAuthStorage());
+		const model = registry.getAll()[0];
+		if (!model) return;
+
+		const sm = createContextSessionManager({
+			model: { provider: model.provider, modelId: model.id },
+			thinkingLevel: "off",
+		});
+		const { session } = await createAgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+		});
+
+		expect(session.agent.state.model?.id).toBe(model.id);
+		await session.dispose();
+	});
+
+	test("session context model not in registry falls back to undefined", async () => {
+		const sm = createContextSessionManager({
+			model: { provider: "unknown-provider", modelId: "unknown-model" },
+			thinkingLevel: "off",
+		});
+		const { session } = await createAgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+		});
+
+		expect(session.agent.state.model).toBeUndefined();
+		await session.dispose();
+	});
+
+	test("auth failure on resolved model falls back to undefined", async () => {
+		const registry = new ModelRegistry(createMockAuthStorage());
+		const model = registry.getAll()[0];
+		if (!model) return;
+
+		const noAuthStorage: AuthStorage = { getApiKey: async () => undefined };
+		const sm = createContextSessionManager({
+			model: { provider: model.provider, modelId: model.id },
+			thinkingLevel: "off",
+		});
+		const { session } = await createAgentSession({
+			sessionManager: sm,
+			authStorage: noAuthStorage,
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+		});
+
+		expect(session.agent.state.model).toBeUndefined();
+		await session.dispose();
+	});
+
+	test("thinking level restored from session context", async () => {
+		const sm = createContextSessionManager({ model: null, thinkingLevel: "high" });
+		const { session } = await createAgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+		});
+
+		expect(session.agent.state.thinkingLevel).toBe("high");
+		await session.dispose();
+	});
+
+	test("explicit thinkingLevel overrides session context", async () => {
+		const sm = createContextSessionManager({ model: null, thinkingLevel: "high" });
+		const { session } = await createAgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+			thinkingLevel: "low",
+		});
+
+		expect(session.agent.state.thinkingLevel).toBe("low");
+		await session.dispose();
+	});
+
+	test("thinking level clamped to off when model does not support reasoning", async () => {
+		const nonReasoningModel = {
+			id: "no-reason-model",
+			provider: "anthropic",
+			reasoning: false,
+		} as Model<Api>;
+		const sm = createContextSessionManager({ model: null, thinkingLevel: "off" });
+		const { session } = await createAgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+			model: nonReasoningModel,
+			thinkingLevel: "high",
+		});
+
+		expect(session.agent.state.thinkingLevel).toBe("off");
+		await session.dispose();
+	});
+
+	test("thinking level not clamped when model is undefined", async () => {
+		const sm = createContextSessionManager({ model: null, thinkingLevel: "off" });
+		const { session } = await createAgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+			thinkingLevel: "high",
+		});
+
+		expect(session.agent.state.thinkingLevel).toBe("high");
+		await session.dispose();
+	});
+
+	test("appendModelChange called when model differs from session context", async () => {
+		const registry = new ModelRegistry(createMockAuthStorage());
+		const model = registry.getAll()[0];
+		if (!model) return;
+
+		const sm = createContextSessionManager({ model: null, thinkingLevel: "off" });
+		const { session } = await createAgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+			model,
+		});
+
+		expect(sm.appendModelChange).toHaveBeenCalledTimes(1);
+		expect(sm.appendModelChange).toHaveBeenCalledWith(
+			{ provider: model.provider, modelId: model.id },
+			expect.any(String),
+		);
+		await session.dispose();
+	});
+
+	test("appendModelChange not called when model matches session context", async () => {
+		const registry = new ModelRegistry(createMockAuthStorage());
+		const model = registry.getAll()[0];
+		if (!model) return;
+
+		const sm = createContextSessionManager({
+			model: { provider: model.provider, modelId: model.id },
+			thinkingLevel: "off",
+		});
+		const { session } = await createAgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+			model,
+		});
+
+		expect(sm.appendModelChange).not.toHaveBeenCalled();
+		await session.dispose();
+	});
+
+	test("appendThinkingLevelChange called when thinking level differs from session context", async () => {
+		const sm = createContextSessionManager({ model: null, thinkingLevel: "off" });
+		const { session } = await createAgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+			thinkingLevel: "high",
+		});
+
+		expect(sm.appendThinkingLevelChange).toHaveBeenCalledWith("high");
+		await session.dispose();
+	});
+
+	test("appendThinkingLevelChange not called when thinking level matches session context", async () => {
+		const sm = createContextSessionManager({ model: null, thinkingLevel: "high" });
+		const { session } = await createAgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+			thinkingLevel: "high",
+		});
+
+		expect(sm.appendThinkingLevelChange).not.toHaveBeenCalled();
+		await session.dispose();
 	});
 });
