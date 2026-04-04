@@ -8,6 +8,7 @@ import type { AuthStorage } from "../interfaces/auth-storage.js";
 import type { SessionManager } from "../interfaces/session-manager.js";
 import type { ToolDefinition } from "../interfaces/tool-definition.js";
 import { AgentSession, createAgentSession } from "./agent-session.js";
+import type { CompactionSummaryMessage } from "./messages.js";
 import { ModelRegistry } from "./model-registry.js";
 
 // ─── Test Helpers ─────────────────────────────────────────────────────
@@ -280,6 +281,36 @@ describe("AgentSession", () => {
 		});
 
 		expect(session.agent.state.messages).toHaveLength(0);
+
+		await session.dispose();
+	});
+
+	test("compactionSummary messages are preserved when seeding", async () => {
+		const compactionSummary: CompactionSummaryMessage = {
+			role: "compactionSummary",
+			summary: "The user asked about TypeScript and the agent explained generics.",
+			tokensBefore: 5000,
+			timestamp: 2,
+		};
+		const messages: AgentMessage[] = [
+			{ role: "user", content: [{ type: "text", text: "Old question" }], timestamp: 1 },
+			compactionSummary,
+			{ role: "user", content: [{ type: "text", text: "New question" }], timestamp: 3 },
+		];
+
+		const session = new AgentSession({
+			sessionManager: createMockSessionManager(),
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+			messages,
+		});
+
+		expect(session.agent.state.messages).toHaveLength(3);
+		expect(session.agent.state.messages[1].role).toBe("compactionSummary");
+		expect((session.agent.state.messages[1] as CompactionSummaryMessage).summary).toBe(
+			"The user asked about TypeScript and the agent explained generics.",
+		);
 
 		await session.dispose();
 	});
