@@ -64,10 +64,17 @@ export interface SessionManager {
 	 * @param summary - The compaction summary text.
 	 * @param firstKeptEntryId - The ID of the first entry to keep after
 	 *   compaction. All entries before this are replaced by the summary.
+	 * @param tokensBefore - The number of tokens in the context before
+	 *   compaction. Used for display purposes. Defaults to 0 if unknown.
 	 * @param details - Optional implementation-specific compaction metadata.
 	 * @returns The unique ID of the compaction entry.
 	 */
-	compact(summary: string, firstKeptEntryId: EntryId, details?: unknown): EntryId;
+	compact(
+		summary: string,
+		firstKeptEntryId: EntryId,
+		tokensBefore?: number,
+		details?: unknown,
+	): EntryId;
 
 	/**
 	 * Persist extension state that is NOT included in LLM context.

@@ -5,11 +5,15 @@ export type {
 	EntryId,
 	ReadonlySessionManager,
 	SessionContext,
-	SessionManager,
 	ToolDefinition,
 	UIProvider,
 } from "./interfaces/index.js";
 export { noOpUIProvider } from "./interfaces/ui.js";
+
+// Built-in SessionManager implementations.
+// SessionManager is exported as both a type (the interface) and a value
+// (namespace with factory methods) via declaration merging in session-managers/index.ts.
+export { createInMemorySessionManager, SessionManager } from "./session-managers/index.js";
 
 // ExtensionsAPI
 export type {
