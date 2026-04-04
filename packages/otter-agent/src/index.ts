@@ -1,7 +1,6 @@
 // OtterAgent interfaces
 export type {
 	AgentEnvironment,
-	AuthStorage,
 	EntryId,
 	ReadonlySessionManager,
 	SessionContext,
@@ -9,6 +8,11 @@ export type {
 	UIProvider,
 } from "./interfaces/index.js";
 export { noOpUIProvider } from "./interfaces/ui.js";
+
+// Built-in AuthStorage implementations.
+// AuthStorage is exported as both a type (the interface) and a value
+// (namespace with factory methods) via declaration merging in auth-storages/index.ts.
+export { AuthStorage, createInMemoryAuthStorage } from "./auth-storages/index.js";
 
 // Built-in SessionManager implementations.
 // SessionManager is exported as both a type (the interface) and a value
