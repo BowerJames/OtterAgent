@@ -13,7 +13,7 @@ function createMockSessionManager(): SessionManager {
 	let entryCounter = 0;
 	return {
 		appendMessage: mock(() => String(++entryCounter)),
-		buildSessionContext: mock(() => []),
+		buildSessionContext: mock(() => ({ messages: [], thinkingLevel: "off", model: null })),
 		compact: mock(() => String(++entryCounter)),
 		appendCustomEntry: mock(() => String(++entryCounter)),
 		appendCustomMessageEntry: mock(() => String(++entryCounter)),

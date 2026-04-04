@@ -4,6 +4,7 @@ export type {
 	AuthStorage,
 	EntryId,
 	ReadonlySessionManager,
+	SessionContext,
 	SessionManager,
 	ToolDefinition,
 	UIProvider,

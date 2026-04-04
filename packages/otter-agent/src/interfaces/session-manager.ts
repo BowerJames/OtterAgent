@@ -1,10 +1,25 @@
-import type { AgentMessage } from "@mariozechner/pi-agent-core";
+import type { AgentMessage, ThinkingLevel } from "@mariozechner/pi-agent-core";
 import type { ImageContent, TextContent } from "@mariozechner/pi-ai";
 
 /**
  * A unique identifier for a session entry.
  */
 export type EntryId = string;
+
+/**
+ * The result of building session context for the LLM.
+ *
+ * Contains the ordered message list along with the model and thinking
+ * level that were active when the session was last used.
+ */
+export interface SessionContext {
+	/** Ordered array of messages suitable for the LLM context. */
+	messages: AgentMessage[];
+	/** The thinking level at the end of the session. Defaults to "off". */
+	thinkingLevel: ThinkingLevel;
+	/** The model in use at the end of the session, or null if unknown. */
+	model: { provider: string; modelId: string } | null;
+}
 
 /**
  * Minimal interface for persisting conversation state.
@@ -26,7 +41,7 @@ export interface SessionManager {
 	appendMessage(message: AgentMessage): EntryId;
 
 	/**
-	 * Build the message list to send to the LLM.
+	 * Build the session context for the LLM.
 	 *
 	 * Handles compaction: if a compaction marker exists, messages before
 	 * `firstKeptEntryId` are discarded and the compaction summary is
@@ -34,11 +49,13 @@ export interface SessionManager {
 	 *
 	 * Custom message entries (from `appendCustomMessageEntry`) are included.
 	 * Metadata entries (model change, thinking level, labels) and custom
-	 * entries (from `appendCustomEntry`) are excluded.
+	 * entries (from `appendCustomEntry`) are excluded from the messages
+	 * array, but model and thinking level are extracted from their
+	 * respective metadata entries.
 	 *
-	 * @returns An ordered array of messages suitable for the LLM context.
+	 * @returns The session context including messages, thinking level, and model.
 	 */
-	buildSessionContext(): AgentMessage[];
+	buildSessionContext(): SessionContext;
 
 	/**
 	 * Record a compaction event. When `buildSessionContext()` is called,
