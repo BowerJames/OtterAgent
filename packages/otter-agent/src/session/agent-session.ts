@@ -92,7 +92,12 @@ export async function createAgentSession(
 	}
 
 	// 9. Construct and return.
-	const session = new AgentSession({ ...options, model, thinkingLevel });
+	const session = new AgentSession({
+		...options,
+		model,
+		thinkingLevel,
+		messages: sessionContext.messages,
+	});
 	return { session };
 }
 
@@ -121,6 +126,13 @@ export interface AgentSessionOptions {
 
 	/** Extensions to load. */
 	extensions?: Extension[];
+
+	/**
+	 * Messages to seed the agent with on session restore.
+	 * Pass `buildSessionContext().messages` to restore a prior conversation.
+	 * Defaults to an empty array (new session).
+	 */
+	messages?: AgentMessage[];
 
 	/** Additional pi-agent-core Agent options. */
 	agentOptions?: Partial<AgentOptions>;
@@ -211,6 +223,7 @@ export class AgentSession {
 				model: options.model,
 				thinkingLevel: options.thinkingLevel ?? "off",
 				tools,
+				messages: options.messages ?? [],
 				...options.agentOptions?.initialState,
 			},
 			convertToLlm: options.agentOptions?.convertToLlm ?? convertToLlm,
