@@ -2,6 +2,7 @@ export { AgentSession, createAgentSession } from "./agent-session.js";
 export type {
 	AgentSessionEvent,
 	AgentSessionOptions,
+	CreateAgentSessionOptions,
 	CreateAgentSessionResult,
 } from "./agent-session.js";
 export { convertToLlm, createCompactionSummaryMessage, createCustomMessage } from "./messages.js";

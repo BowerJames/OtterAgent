@@ -81,6 +81,7 @@ export type {
 	AgentSessionOptions,
 	BuildSystemPromptOptions,
 	CompactionSummaryMessage,
+	CreateAgentSessionOptions,
 	CreateAgentSessionResult,
 	CustomMessage,
 } from "./session/index.js";

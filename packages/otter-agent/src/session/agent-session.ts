@@ -32,6 +32,13 @@ export interface CreateAgentSessionResult {
 }
 
 /**
+ * Options for {@link createAgentSession}. Identical to {@link AgentSessionOptions}
+ * but without `messages` — the factory always derives messages from
+ * {@link SessionManager.buildSessionContext}.
+ */
+export type CreateAgentSessionOptions = Omit<AgentSessionOptions, "messages">;
+
+/**
  * Async factory that creates an AgentSession with session restore.
  *
  * Resolves the effective model and thinking level by consulting the
@@ -43,7 +50,7 @@ export interface CreateAgentSessionResult {
  * {@link AgentSession} constructor directly.
  */
 export async function createAgentSession(
-	options: AgentSessionOptions,
+	options: CreateAgentSessionOptions,
 ): Promise<CreateAgentSessionResult> {
 	const { sessionManager, authStorage } = options;
 
@@ -128,8 +135,9 @@ export interface AgentSessionOptions {
 	extensions?: Extension[];
 
 	/**
-	 * Messages to seed the agent with on session restore.
-	 * Pass `buildSessionContext().messages` to restore a prior conversation.
+	 * Messages to seed the agent with.
+	 * For direct constructor use only — when using {@link createAgentSession},
+	 * messages are populated automatically from {@link SessionManager.buildSessionContext}.
 	 * Defaults to an empty array (new session).
 	 */
 	messages?: AgentMessage[];
