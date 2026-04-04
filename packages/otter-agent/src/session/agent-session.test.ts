@@ -855,7 +855,7 @@ describe("createAgentSession", () => {
 
 	test("messages is not accepted as an option (type-level)", async () => {
 		const sm = createContextSessionManager({ model: null, thinkingLevel: "off" });
-		await createAgentSession({
+		const { session } = await createAgentSession({
 			sessionManager: sm,
 			authStorage: createMockAuthStorage(),
 			environment: createMockEnvironment(),
@@ -863,6 +863,7 @@ describe("createAgentSession", () => {
 			// @ts-expect-error messages is not a valid option for createAgentSession
 			messages: [],
 		});
+		await session.dispose();
 	});
 
 	test("empty messages from buildSessionContext() starts agent with no history", async () => {
