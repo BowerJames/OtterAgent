@@ -22,6 +22,7 @@ import type { ToolDefinition } from "../interfaces/tool-definition.js";
 import type { UIProvider } from "../interfaces/ui-provider.js";
 import { convertToLlm } from "./messages.js";
 import { ModelRegistry } from "./model-registry.js";
+import { buildSystemPrompt } from "./system-prompt.js";
 import { wrapToolDefinition } from "./tool-wrapper.js";
 
 /** Options for creating an AgentSession. */
@@ -126,7 +127,7 @@ export class AgentSession {
 		}
 
 		// Build initial system prompt
-		const systemPrompt = this._buildSystemPrompt();
+		const systemPrompt = this._getCurrentSystemPrompt();
 
 		// Build initial tool list
 		const tools = this._getActiveTools();
@@ -185,8 +186,55 @@ export class AgentSession {
 
 	// ─── Core Interaction ─────────────────────────────────────────────
 
-	/** Send a prompt to the agent. */
+	/**
+	 * Send a prompt to the agent.
+	 *
+	 * Fires `before_agent_start` before the agent loop. Extensions can
+	 * override the system prompt for this turn and inject custom messages.
+	 * System prompt overrides are per-turn only — the base prompt is
+	 * always restored before the next turn.
+	 */
 	async prompt(input: string, images?: ImageContent[]): Promise<void> {
+		const baseSystemPrompt = this._getCurrentSystemPrompt();
+
+		// Fire before_agent_start — extensions can override the system prompt
+		// or inject custom messages for this turn.
+		const result = await this._extensionRunner.emitBeforeAgentStart({
+			type: "before_agent_start",
+			prompt: input,
+			images,
+			systemPrompt: baseSystemPrompt,
+		});
+
+		// Apply per-turn system prompt override, or ensure the base is set
+		// (in case a previous turn had an override).
+		if (result?.systemPrompt) {
+			this.agent.setSystemPrompt(result.systemPrompt);
+		} else {
+			this.agent.setSystemPrompt(baseSystemPrompt);
+		}
+
+		// Build the messages array: custom messages from extensions first,
+		// then the user prompt.
+		const messages: AgentMessage[] = [];
+		if (result?.message) {
+			messages.push({
+				role: "custom",
+				customType: result.message.customType,
+				content: result.message.content,
+				display: result.message.display,
+				details: result.message.details,
+				timestamp: Date.now(),
+			} as AgentMessage);
+		}
+
+		if (messages.length > 0) {
+			// Prepend custom messages, then send the user prompt
+			for (const msg of messages) {
+				this.agent.appendMessage(msg);
+			}
+		}
+
 		await this.agent.prompt(input, images);
 	}
 
@@ -441,47 +489,23 @@ export class AgentSession {
 		};
 	}
 
-	/** Build the full system prompt from base + environment + tools. */
-	private _buildSystemPrompt(): string {
-		let prompt = this._baseSystemPrompt;
-
-		// Append environment context
-		if (this._environmentAppend) {
-			prompt += `\n\n${this._environmentAppend}`;
-		}
-
-		// Append tool information
-		const toolSection = this._buildToolSection();
-		if (toolSection) {
-			prompt += `\n\n${toolSection}`;
-		}
-
-		return prompt;
+	/**
+	 * Build the current base system prompt (base + environment + tools).
+	 * This is the "resting" prompt that is always restored between turns.
+	 */
+	private _getCurrentSystemPrompt(): string {
+		return buildSystemPrompt({
+			basePrompt: this._baseSystemPrompt,
+			environmentAppend: this._environmentAppend,
+			tools: this._getActiveToolDefinitions(),
+		});
 	}
 
-	/** Build the tool snippets and guidelines section of the system prompt. */
-	private _buildToolSection(): string | undefined {
-		const activeDefinitions = [...this._activeToolNames]
+	/** Get the active ToolDefinition instances. */
+	private _getActiveToolDefinitions(): ToolDefinition[] {
+		return [...this._activeToolNames]
 			.map((name) => this._toolDefinitions.get(name))
 			.filter((d): d is ToolDefinition => d !== undefined);
-
-		const snippets = activeDefinitions
-			.filter((d) => d.promptSnippet)
-			.map((d) => `- ${d.name}: ${d.promptSnippet}`);
-
-		const guidelines = activeDefinitions.flatMap((d) => d.promptGuidelines ?? []);
-
-		const parts: string[] = [];
-
-		if (snippets.length > 0) {
-			parts.push(`# Available Tools\n${snippets.join("\n")}`);
-		}
-
-		if (guidelines.length > 0) {
-			parts.push(`# Guidelines\n${guidelines.map((g) => `- ${g}`).join("\n")}`);
-		}
-
-		return parts.length > 0 ? parts.join("\n\n") : undefined;
 	}
 
 	/** Get the active AgentTool instances for the pi-agent-core Agent. */
@@ -494,6 +518,6 @@ export class AgentSession {
 	/** Apply tool changes to the Agent (update tools and rebuild system prompt). */
 	private _applyToolChanges(): void {
 		this.agent.setTools(this._getActiveTools());
-		this.agent.setSystemPrompt(this._buildSystemPrompt());
+		this.agent.setSystemPrompt(this._getCurrentSystemPrompt());
 	}
 }
