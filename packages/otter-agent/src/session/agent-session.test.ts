@@ -1,5 +1,6 @@
 import { describe, expect, mock, test } from "bun:test";
 import { Type } from "@sinclair/typebox";
+import type { Extension } from "../extensions/extension.js";
 import type { AgentEnvironment } from "../interfaces/agent-environment.js";
 import type { AuthStorage } from "../interfaces/auth-storage.js";
 import type { SessionManager } from "../interfaces/session-manager.js";
@@ -58,7 +59,7 @@ function createTestTool(name: string): ToolDefinition {
 // ─── Tests ────────────────────────────────────────────────────────────
 
 describe("AgentSession", () => {
-	test("constructs with minimal options", () => {
+	test("constructs with minimal options", async () => {
 		const session = new AgentSession({
 			sessionManager: createMockSessionManager(),
 			authStorage: createMockAuthStorage(),
@@ -70,10 +71,10 @@ describe("AgentSession", () => {
 		expect(session.sessionManager).toBeDefined();
 		expect(session.agent.state.systemPrompt).toBe("You are a helpful assistant.");
 
-		session.dispose();
+		await session.dispose();
 	});
 
-	test("appends environment system message", () => {
+	test("appends environment system message", async () => {
 		const session = new AgentSession({
 			sessionManager: createMockSessionManager(),
 			authStorage: createMockAuthStorage(),
@@ -86,10 +87,10 @@ describe("AgentSession", () => {
 		expect(session.agent.state.systemPrompt).toContain("Base prompt.");
 		expect(session.agent.state.systemPrompt).toContain("You are in a Docker container.");
 
-		session.dispose();
+		await session.dispose();
 	});
 
-	test("registers environment tools", () => {
+	test("registers environment tools", async () => {
 		const tool = createTestTool("env_tool");
 		const session = new AgentSession({
 			sessionManager: createMockSessionManager(),
@@ -102,10 +103,10 @@ describe("AgentSession", () => {
 		expect(session.agent.state.tools).toHaveLength(1);
 		expect(session.agent.state.tools[0].name).toBe("env_tool");
 
-		session.dispose();
+		await session.dispose();
 	});
 
-	test("includes tool snippets and guidelines in system prompt", () => {
+	test("includes tool snippets and guidelines in system prompt", async () => {
 		const tool = createTestTool("my_tool");
 		const session = new AgentSession({
 			sessionManager: createMockSessionManager(),
@@ -120,10 +121,10 @@ describe("AgentSession", () => {
 		expect(prompt).toContain("# Guidelines");
 		expect(prompt).toContain("Use my_tool for testing");
 
-		session.dispose();
+		await session.dispose();
 	});
 
-	test("registerTool adds a tool and updates the agent", () => {
+	test("registerTool adds a tool and updates the agent", async () => {
 		const session = new AgentSession({
 			sessionManager: createMockSessionManager(),
 			authStorage: createMockAuthStorage(),
@@ -140,10 +141,10 @@ describe("AgentSession", () => {
 		expect(session.agent.state.tools).toHaveLength(1);
 		expect(session.agent.state.systemPrompt).toContain("new_tool");
 
-		session.dispose();
+		await session.dispose();
 	});
 
-	test("setActiveToolsByName filters to valid tools", () => {
+	test("setActiveToolsByName filters to valid tools", async () => {
 		const tool1 = createTestTool("tool_a");
 		const tool2 = createTestTool("tool_b");
 		const session = new AgentSession({
@@ -160,10 +161,10 @@ describe("AgentSession", () => {
 		expect(session.getActiveToolNames()).toEqual(["tool_a"]);
 		expect(session.agent.state.tools).toHaveLength(1);
 
-		session.dispose();
+		await session.dispose();
 	});
 
-	test("setModel persists to session manager", () => {
+	test("setModel persists to session manager", async () => {
 		const sm = createMockSessionManager();
 		const session = new AgentSession({
 			sessionManager: sm,
@@ -175,17 +176,36 @@ describe("AgentSession", () => {
 		const testModel = { id: "test-model", provider: "test" } as Parameters<
 			typeof session.setModel
 		>[0];
-		session.setModel(testModel);
+		const result = await session.setModel(testModel);
 
+		expect(result).toBe(true);
 		expect(sm.appendModelChange).toHaveBeenCalledWith(
 			{ provider: "test", modelId: "test-model" },
 			"off",
 		);
 
-		session.dispose();
+		await session.dispose();
 	});
 
-	test("setThinkingLevel persists to session manager", () => {
+	test("setModel returns false when no auth available", async () => {
+		const session = new AgentSession({
+			sessionManager: createMockSessionManager(),
+			authStorage: { getApiKey: async () => undefined },
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+		});
+
+		const testModel = { id: "test-model", provider: "no-auth-provider" } as Parameters<
+			typeof session.setModel
+		>[0];
+		const result = await session.setModel(testModel);
+
+		expect(result).toBe(false);
+
+		await session.dispose();
+	});
+
+	test("setThinkingLevel persists to session manager", async () => {
 		const sm = createMockSessionManager();
 		const session = new AgentSession({
 			sessionManager: sm,
@@ -198,10 +218,10 @@ describe("AgentSession", () => {
 
 		expect(sm.appendThinkingLevelChange).toHaveBeenCalledWith("high");
 
-		session.dispose();
+		await session.dispose();
 	});
 
-	test("subscribe and dispose work correctly", () => {
+	test("subscribe and dispose work correctly", async () => {
 		const session = new AgentSession({
 			sessionManager: createMockSessionManager(),
 			authStorage: createMockAuthStorage(),
@@ -224,10 +244,10 @@ describe("AgentSession", () => {
 		session.compact();
 		expect(events).toHaveLength(0);
 
-		session.dispose();
+		await session.dispose();
 	});
 
-	test("agent events are forwarded to session subscribers", () => {
+	test("authStorage is wired via ModelRegistry as the agent's API key resolver", async () => {
 		const session = new AgentSession({
 			sessionManager: createMockSessionManager(),
 			authStorage: createMockAuthStorage(),
@@ -235,39 +255,13 @@ describe("AgentSession", () => {
 			systemPrompt: "Prompt.",
 		});
 
-		const events: string[] = [];
-		session.subscribe((e) => events.push(e.type));
-
-		// Simulate an agent event by subscribing to the agent and
-		// verifying the session forwards it. We can trigger agent_start/agent_end
-		// via the agent's internal emit by calling prompt with no model set
-		// (it will error, but events should still fire).
-		// Instead, let's verify the wiring exists: the session subscribes to agent
-		// events, so any agent event should appear in our session subscriber.
-		// We verify this via the compact() method which emits session-level events.
-		// Agent-level events require an actual agent loop (needs LLM), so we
-		// can only verify the subscription wiring exists.
-		expect(session.agent).toBeDefined();
-
-		session.dispose();
-	});
-
-	test("authStorage is wired as the agent's API key resolver", () => {
-		const authStorage = createMockAuthStorage();
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage,
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-		});
-
-		// The agent's getApiKey should delegate to authStorage
 		expect(session.agent.getApiKey).toBeDefined();
+		expect(session.modelRegistry).toBeDefined();
 
-		session.dispose();
+		await session.dispose();
 	});
 
-	test("getAllToolDefinitions returns all registered tools", () => {
+	test("getAllToolDefinitions returns all registered tools", async () => {
 		const tool1 = createTestTool("tool_x");
 		const tool2 = createTestTool("tool_y");
 		const session = new AgentSession({
@@ -283,6 +277,173 @@ describe("AgentSession", () => {
 		expect(defs).toHaveLength(2);
 		expect(defs.map((d) => d.name).sort()).toEqual(["tool_x", "tool_y"]);
 
-		session.dispose();
+		await session.dispose();
+	});
+
+	test("getSystemPrompt returns the current system prompt", async () => {
+		const session = new AgentSession({
+			sessionManager: createMockSessionManager(),
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "My prompt.",
+		});
+
+		expect(session.getSystemPrompt()).toBe("My prompt.");
+
+		await session.dispose();
+	});
+
+	// ─── Extension Integration ────────────────────────────────────────
+
+	describe("extension integration", () => {
+		test("loadExtensions fires session_start event", async () => {
+			const handler = mock(() => {});
+			const ext: Extension = (api) => api.on("session_start", handler);
+
+			const session = new AgentSession({
+				sessionManager: createMockSessionManager(),
+				authStorage: createMockAuthStorage(),
+				environment: createMockEnvironment(),
+				systemPrompt: "Prompt.",
+			});
+
+			await session.loadExtensions([ext]);
+
+			expect(handler).toHaveBeenCalledTimes(1);
+
+			await session.dispose();
+		});
+
+		test("dispose fires session_shutdown event", async () => {
+			const handler = mock(() => {});
+			const ext: Extension = (api) => api.on("session_shutdown", handler);
+
+			const session = new AgentSession({
+				sessionManager: createMockSessionManager(),
+				authStorage: createMockAuthStorage(),
+				environment: createMockEnvironment(),
+				systemPrompt: "Prompt.",
+			});
+
+			await session.loadExtensions([ext]);
+			await session.dispose();
+
+			expect(handler).toHaveBeenCalledTimes(1);
+		});
+
+		test("extension can register a tool via api.registerTool", async () => {
+			const tool = createTestTool("ext_registered_tool");
+			const ext: Extension = (api) => api.registerTool(tool);
+
+			const session = new AgentSession({
+				sessionManager: createMockSessionManager(),
+				authStorage: createMockAuthStorage(),
+				environment: createMockEnvironment(),
+				systemPrompt: "Prompt.",
+			});
+
+			await session.loadExtensions([ext]);
+
+			expect(session.getActiveToolNames()).toContain("ext_registered_tool");
+			expect(session.agent.state.tools.map((t) => t.name)).toContain("ext_registered_tool");
+
+			await session.dispose();
+		});
+
+		test("extension can register a command and it can be executed", async () => {
+			const handler = mock(async () => {});
+			const ext: Extension = (api) =>
+				api.registerCommand("test-cmd", {
+					description: "A test command",
+					handler,
+				});
+
+			const session = new AgentSession({
+				sessionManager: createMockSessionManager(),
+				authStorage: createMockAuthStorage(),
+				environment: createMockEnvironment(),
+				systemPrompt: "Prompt.",
+			});
+
+			await session.loadExtensions([ext]);
+
+			const commands = session.extensionRunner.getCommands();
+			expect(commands).toHaveLength(1);
+			expect(commands[0].name).toBe("test-cmd");
+
+			const result = await session.extensionRunner.executeCommand("test-cmd", "args");
+			expect(result).toBe(true);
+			expect(handler).toHaveBeenCalledTimes(1);
+
+			await session.dispose();
+		});
+
+		test("reload clears and reloads extensions", async () => {
+			const startHandler = mock(() => {});
+			const ext: Extension = (api) => api.on("session_start", startHandler);
+
+			const session = new AgentSession({
+				sessionManager: createMockSessionManager(),
+				authStorage: createMockAuthStorage(),
+				environment: createMockEnvironment(),
+				systemPrompt: "Prompt.",
+			});
+
+			await session.loadExtensions([ext]);
+			expect(startHandler).toHaveBeenCalledTimes(1);
+
+			await session.reload();
+			// session_start fires again after reload
+			expect(startHandler).toHaveBeenCalledTimes(2);
+
+			await session.dispose();
+		});
+
+		test("extensions passed via options are loaded by loadExtensions", async () => {
+			const handler = mock(() => {});
+			const ext: Extension = (api) => api.on("session_start", handler);
+
+			const session = new AgentSession({
+				sessionManager: createMockSessionManager(),
+				authStorage: createMockAuthStorage(),
+				environment: createMockEnvironment(),
+				systemPrompt: "Prompt.",
+				extensions: [ext],
+			});
+
+			await session.loadExtensions();
+
+			expect(handler).toHaveBeenCalledTimes(1);
+
+			await session.dispose();
+		});
+
+		test("extensionRunner is accessible", async () => {
+			const session = new AgentSession({
+				sessionManager: createMockSessionManager(),
+				authStorage: createMockAuthStorage(),
+				environment: createMockEnvironment(),
+				systemPrompt: "Prompt.",
+			});
+
+			expect(session.extensionRunner).toBeDefined();
+			expect(session.extensionRunner.getCommands()).toHaveLength(0);
+
+			await session.dispose();
+		});
+
+		test("modelRegistry is accessible and has built-in models", async () => {
+			const session = new AgentSession({
+				sessionManager: createMockSessionManager(),
+				authStorage: createMockAuthStorage(),
+				environment: createMockEnvironment(),
+				systemPrompt: "Prompt.",
+			});
+
+			expect(session.modelRegistry).toBeDefined();
+			expect(session.modelRegistry.getAll().length).toBeGreaterThan(0);
+
+			await session.dispose();
+		});
 	});
 });

@@ -11,12 +11,17 @@ import type {
 	ThinkingLevel,
 } from "@mariozechner/pi-agent-core";
 import type { Api, ImageContent, Model } from "@mariozechner/pi-ai";
+import type { CompactOptions } from "../extensions/context.js";
+import { ExtensionRunner } from "../extensions/extension-runner.js";
+import type { ExtensionRunnerActions } from "../extensions/extension-runner.js";
+import type { Extension } from "../extensions/extension.js";
 import type { AgentEnvironment } from "../interfaces/agent-environment.js";
 import type { AuthStorage } from "../interfaces/auth-storage.js";
-import type { SessionManager } from "../interfaces/session-manager.js";
+import type { EntryId, SessionManager } from "../interfaces/session-manager.js";
 import type { ToolDefinition } from "../interfaces/tool-definition.js";
 import type { UIProvider } from "../interfaces/ui-provider.js";
 import { convertToLlm } from "./messages.js";
+import { ModelRegistry } from "./model-registry.js";
 import { wrapToolDefinition } from "./tool-wrapper.js";
 
 /** Options for creating an AgentSession. */
@@ -41,6 +46,9 @@ export interface AgentSessionOptions {
 
 	/** Optional UI provider for extension interaction. */
 	uiProvider?: UIProvider;
+
+	/** Extensions to load. */
+	extensions?: Extension[];
 
 	/** Additional pi-agent-core Agent options. */
 	agentOptions?: Partial<AgentOptions>;
@@ -71,12 +79,17 @@ export class AgentSession {
 	/** Optional UI provider for extensions. */
 	readonly uiProvider: UIProvider | undefined;
 
+	/** Model registry for provider management. */
+	readonly modelRegistry: ModelRegistry;
+
 	private readonly _authStorage: AuthStorage;
 	private readonly _environment: AgentEnvironment;
 	private readonly _baseSystemPrompt: string;
 	private readonly _environmentAppend: string | undefined;
 	private readonly _eventListeners: Set<AgentSessionEventListener> = new Set();
+	private readonly _extensionRunner: ExtensionRunner;
 	private _unsubscribeAgent: () => void;
+	private _extensions: Extension[];
 
 	// Tool management
 	private readonly _toolRegistry: Map<string, AgentTool> = new Map();
@@ -89,6 +102,17 @@ export class AgentSession {
 		this._environment = options.environment;
 		this._baseSystemPrompt = options.systemPrompt;
 		this.uiProvider = options.uiProvider;
+		this._extensions = options.extensions ?? [];
+
+		// Create model registry
+		this.modelRegistry = new ModelRegistry(this._authStorage);
+
+		// Create extension runner
+		this._extensionRunner = new ExtensionRunner();
+		if (options.uiProvider) {
+			this._extensionRunner.setUIProvider(options.uiProvider);
+		}
+		this._extensionRunner.setModelRegistry(this.modelRegistry);
 
 		// Resolve environment at startup (called once)
 		this._environmentAppend = this._environment.getSystemMessageAppend();
@@ -118,14 +142,45 @@ export class AgentSession {
 				...options.agentOptions?.initialState,
 			},
 			convertToLlm: options.agentOptions?.convertToLlm ?? convertToLlm,
-			getApiKey: (provider) => this._authStorage.getApiKey(provider),
+			getApiKey: (provider) => this.modelRegistry.getApiKey(provider),
 		});
 
 		// Install tool hooks for extension events
 		this._installToolHooks();
 
+		// Bind extension runner actions
+		this._extensionRunner.bindActions(this._buildRunnerActions());
+
 		// Subscribe to agent events for persistence and forwarding
 		this._unsubscribeAgent = this.agent.subscribe(this._handleAgentEvent);
+	}
+
+	// ─── Extension Loading ────────────────────────────────────────────
+
+	/**
+	 * Load extensions and fire session_start.
+	 * Call this after construction to initialise extensions.
+	 */
+	async loadExtensions(extensions?: Extension[]): Promise<void> {
+		if (extensions) {
+			this._extensions = extensions;
+		}
+		await this._extensionRunner.loadExtensions(this._extensions);
+		await this._extensionRunner.emit({ type: "session_start" });
+	}
+
+	/** Get the extension runner for direct access (commands, error listeners, etc). */
+	get extensionRunner(): ExtensionRunner {
+		return this._extensionRunner;
+	}
+
+	/**
+	 * Reload extensions: clears all handlers, reloads, fires session_start.
+	 */
+	async reload(): Promise<void> {
+		this._extensionRunner.clear();
+		await this._extensionRunner.loadExtensions(this._extensions);
+		await this._extensionRunner.emit({ type: "session_start" });
 	}
 
 	// ─── Core Interaction ─────────────────────────────────────────────
@@ -157,13 +212,16 @@ export class AgentSession {
 
 	// ─── Model Control ────────────────────────────────────────────────
 
-	/** Set the current model. */
-	setModel(model: Model<Api>): void {
+	/** Set the current model. Returns false if no API key is available. */
+	async setModel(model: Model<Api>): Promise<boolean> {
+		const hasAuth = await this.modelRegistry.hasAuth(model);
+		if (!hasAuth) return false;
 		this.agent.setModel(model);
 		this.sessionManager.appendModelChange(
 			{ provider: model.provider, modelId: model.id },
 			this.agent.state.thinkingLevel,
 		);
+		return true;
 	}
 
 	/** Set the thinking level. */
@@ -208,6 +266,13 @@ export class AgentSession {
 		};
 	}
 
+	// ─── System Prompt ────────────────────────────────────────────────
+
+	/** Get the current effective system prompt. */
+	getSystemPrompt(): string {
+		return this.agent.state.systemPrompt;
+	}
+
 	// ─── Compaction ───────────────────────────────────────────────────
 
 	/** Compact the conversation context. */
@@ -221,7 +286,8 @@ export class AgentSession {
 	// ─── Cleanup ──────────────────────────────────────────────────────
 
 	/** Unsubscribe from the underlying Agent and clean up. */
-	dispose(): void {
+	async dispose(): Promise<void> {
+		await this._extensionRunner.emit({ type: "session_shutdown" });
 		this._unsubscribeAgent();
 		this._eventListeners.clear();
 	}
@@ -240,27 +306,139 @@ export class AgentSession {
 			this.sessionManager.appendMessage(event.message);
 		}
 
+		// Forward agent events to extension handlers
+		this._extensionRunner.emit(event).catch(() => {
+			// Errors are handled by extension runner error listeners
+		});
+
 		// Forward to session-level listeners
 		this._emit(event);
 	};
 
 	/**
 	 * Install beforeToolCall/afterToolCall hooks on the Agent.
-	 *
-	 * These hooks will be the integration point for extension tool_call
-	 * and tool_result events (wired up in #4 extension loading).
-	 * For now they are placeholders that can be extended.
+	 * These hooks dispatch tool_call and tool_result events to extensions.
 	 */
 	private _installToolHooks(): void {
-		this.agent.setBeforeToolCall(async (_context) => {
-			// Extension tool_call event dispatch will be wired here in #4
+		this.agent.setBeforeToolCall(async (context) => {
+			if (!this._extensionRunner.hasHandlers("tool_call")) return undefined;
+
+			const result = await this._extensionRunner.emitToolCall({
+				type: "tool_call",
+				toolCallId: context.toolCall.id,
+				toolName: context.toolCall.name,
+				input: (context.args as Record<string, unknown>) ?? {},
+			});
+
+			if (result?.block) {
+				return { block: true, reason: result.reason };
+			}
 			return undefined;
 		});
 
-		this.agent.setAfterToolCall(async (_context) => {
-			// Extension tool_result event dispatch will be wired here in #4
+		this.agent.setAfterToolCall(async (context) => {
+			if (!this._extensionRunner.hasHandlers("tool_result")) return undefined;
+
+			const result = await this._extensionRunner.emitToolResult({
+				type: "tool_result",
+				toolCallId: context.toolCall.id,
+				toolName: context.toolCall.name,
+				input: (context.args as Record<string, unknown>) ?? {},
+				content: context.result.content,
+				details: context.result.details,
+				isError: context.isError,
+			});
+
+			if (result) {
+				return {
+					content: result.content,
+					details: result.details,
+					isError: result.isError,
+				};
+			}
 			return undefined;
 		});
+	}
+
+	/** Build runner actions that delegate to this session. */
+	private _buildRunnerActions(): ExtensionRunnerActions {
+		return {
+			registerTool: (tool) => this.registerTool(tool),
+			getActiveToolNames: () => this.getActiveToolNames(),
+			getAllToolDefinitions: () => this.getAllToolDefinitions(),
+			setActiveToolsByName: (names) => this.setActiveToolsByName(names),
+			setModel: (model) => this.setModel(model),
+			getThinkingLevel: () => this.agent.state.thinkingLevel,
+			setThinkingLevel: (level) => this.setThinkingLevel(level),
+			sendMessage: (message, options) => {
+				// Convert custom message to AgentMessage and deliver
+				const agentMessage = {
+					role: "custom" as const,
+					customType: message.customType,
+					content: message.content,
+					display: message.display,
+					details: message.details,
+					timestamp: Date.now(),
+				};
+				this.sessionManager.appendCustomMessageEntry(
+					message.customType,
+					message.content,
+					message.display,
+				);
+				if (options?.deliverAs === "steer") {
+					this.agent.steer(agentMessage as AgentMessage);
+				} else if (options?.deliverAs === "followUp" || options?.triggerTurn) {
+					this.agent.followUp(agentMessage as AgentMessage);
+				} else {
+					this.agent.appendMessage(agentMessage as AgentMessage);
+				}
+			},
+			sendUserMessage: (content, options) => {
+				const text = typeof content === "string" ? content : JSON.stringify(content);
+				const userMessage = {
+					role: "user" as const,
+					content: text,
+					timestamp: Date.now(),
+				} as AgentMessage;
+				if (options?.deliverAs === "steer") {
+					this.agent.steer(userMessage);
+				} else {
+					this.agent.followUp(userMessage);
+				}
+			},
+			appendEntry: (customType, data) => {
+				this.sessionManager.appendCustomEntry(customType, data);
+			},
+			setLabel: (entryId: EntryId, label: string | undefined) => {
+				if (label !== undefined) {
+					this.sessionManager.appendLabel(label, entryId);
+				}
+			},
+			getSessionManager: () => this.sessionManager,
+			getModel: () => this.agent.state.model,
+			isIdle: () => !this.agent.state.isStreaming,
+			getSignal: () => this.agent.signal,
+			abort: () => this.abort(),
+			hasPendingMessages: () => this.agent.hasQueuedMessages(),
+			shutdown: () => {
+				this.dispose();
+			},
+			getContextUsage: () => {
+				const model = this.agent.state.model;
+				if (!model) return undefined;
+				return {
+					tokens: null,
+					contextWindow: model.contextWindow ?? 0,
+					percent: null,
+				};
+			},
+			compact: (options?: CompactOptions) => {
+				this.compact(options?.customInstructions);
+			},
+			getSystemPrompt: () => this.getSystemPrompt(),
+			waitForIdle: () => this.waitForIdle(),
+			reload: () => this.reload(),
+		};
 	}
 
 	/** Build the full system prompt from base + environment + tools. */
