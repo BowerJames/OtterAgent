@@ -117,21 +117,3 @@ export type {
 	SetThinkingLevelCommand,
 	SteerCommand,
 } from "./rpc/index.js";
-
-// Re-exports from pi-agent-core
-export type {
-	AgentContext,
-	AgentEvent,
-	AgentMessage,
-	AgentState,
-	AgentTool,
-	AgentToolCall,
-	AgentToolResult,
-	AgentToolUpdateCallback,
-	AfterToolCallContext,
-	AfterToolCallResult,
-	BeforeToolCallContext,
-	BeforeToolCallResult,
-	ThinkingLevel,
-	ToolExecutionMode,
-} from "@mariozechner/pi-agent-core";
