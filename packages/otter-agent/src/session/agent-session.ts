@@ -195,6 +195,12 @@ export class AgentSession {
 	 * always restored before the next turn.
 	 */
 	async prompt(input: string, images?: ImageContent[]): Promise<void> {
+		// Intercept extension commands (e.g., "/commandName args")
+		if (input.startsWith("/")) {
+			const handled = await this._tryExecuteExtensionCommand(input);
+			if (handled) return;
+		}
+
 		const baseSystemPrompt = this._getCurrentSystemPrompt();
 
 		// Fire before_agent_start — extensions can override the system prompt
@@ -513,6 +519,17 @@ export class AgentSession {
 		return [...this._activeToolNames]
 			.map((name) => this._toolRegistry.get(name))
 			.filter((t): t is AgentTool => t !== undefined);
+	}
+
+	/**
+	 * Try to execute a `/command args` extension command.
+	 * Returns true if the command was found (even if it errored).
+	 */
+	private async _tryExecuteExtensionCommand(text: string): Promise<boolean> {
+		const spaceIndex = text.indexOf(" ");
+		const commandName = spaceIndex === -1 ? text.slice(1) : text.slice(1, spaceIndex);
+		const args = spaceIndex === -1 ? "" : text.slice(spaceIndex + 1);
+		return this._extensionRunner.executeCommand(commandName, args);
 	}
 
 	/** Apply tool changes to the Agent (update tools and rebuild system prompt). */

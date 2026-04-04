@@ -78,6 +78,10 @@ export type {
 	CustomMessage,
 } from "./session/index.js";
 
+// RPC handler
+export { RpcHandler, createRpcUIProvider } from "./rpc/index.js";
+export type { RpcHandlerOptions } from "./rpc/index.js";
+
 // RPC protocol
 export type {
 	AbortCommand,
