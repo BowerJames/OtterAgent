@@ -6,6 +6,7 @@ export type {
 	ExtensionContext,
 } from "./context.js";
 export type { EventBus } from "./event-bus.js";
+export { createEventBus } from "./event-bus-impl.js";
 export type {
 	AgentEndEvent,
 	AgentStartEvent,
@@ -39,5 +40,7 @@ export type {
 	TurnStartEvent,
 } from "./events.js";
 export type { Extension } from "./extension.js";
+export { ExtensionRunner } from "./extension-runner.js";
+export type { ExtensionRunnerActions } from "./extension-runner.js";
 export type { ExtensionHandler, ExtensionsAPI, ToolInfo } from "./extensions-api.js";
 export type { ProviderConfig, ProviderModelConfig } from "./providers.js";

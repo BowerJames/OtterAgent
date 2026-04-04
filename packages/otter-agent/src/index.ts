@@ -8,6 +8,7 @@ export type {
 	ToolDefinition,
 	UIProvider,
 } from "./interfaces/index.js";
+export { noOpUIProvider } from "./interfaces/ui.js";
 
 // ExtensionsAPI
 export type {
@@ -30,6 +31,7 @@ export type {
 	ExtensionEvent,
 	ExtensionEventName,
 	ExtensionHandler,
+	ExtensionRunnerActions,
 	ExtensionsAPI,
 	InputEvent,
 	InputEventResult,
@@ -55,6 +57,7 @@ export type {
 	TurnEndEvent,
 	TurnStartEvent,
 } from "./extensions/index.js";
+export { createEventBus, ExtensionRunner } from "./extensions/index.js";
 
 // AgentSession
 export {
@@ -62,6 +65,7 @@ export {
 	convertToLlm,
 	createCompactionSummaryMessage,
 	createCustomMessage,
+	ModelRegistry,
 	wrapToolDefinition,
 } from "./session/index.js";
 export type {
