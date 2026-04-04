@@ -41,9 +41,6 @@ export function createBashToolDefinition(
 			try {
 				result = await bash.exec(command, { signal: controller.signal });
 			} catch (err) {
-				if (timeoutHandle) clearTimeout(timeoutHandle);
-				signal?.removeEventListener("abort", onAbort);
-
 				if (signal?.aborted) {
 					throw new Error("Command aborted");
 				}
