@@ -62,6 +62,8 @@ export { createEventBus, ExtensionRunner } from "./extensions/index.js";
 // AgentSession
 export {
 	AgentSession,
+	buildSystemPrompt,
+	buildToolSection,
 	convertToLlm,
 	createCompactionSummaryMessage,
 	createCustomMessage,
@@ -71,6 +73,7 @@ export {
 export type {
 	AgentSessionEvent,
 	AgentSessionOptions,
+	BuildSystemPromptOptions,
 	CompactionSummaryMessage,
 	CustomMessage,
 } from "./session/index.js";
