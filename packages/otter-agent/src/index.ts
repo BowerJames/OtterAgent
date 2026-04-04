@@ -78,6 +78,42 @@ export type {
 	CustomMessage,
 } from "./session/index.js";
 
+// RPC protocol
+export type {
+	AbortCommand,
+	CompactCommand,
+	ExtensionUIConfirmRequest,
+	ExtensionUIDialogRequest,
+	ExtensionUIInputRequest,
+	ExtensionUINotifyRequest,
+	ExtensionUIRequest,
+	ExtensionUIResponse,
+	ExtensionUISelectRequest,
+	FollowUpCommand,
+	GetCommandsCommand,
+	GetStateCommand,
+	PromptCommand,
+	RpcAgentEvent,
+	RpcAgentEventName,
+	RpcCommand,
+	RpcCommandInfo,
+	RpcCommandType,
+	RpcErrorResponse,
+	RpcExtensionEventName,
+	RpcGetCommandsData,
+	RpcInboundMessage,
+	RpcOutboundMessage,
+	RpcResponse,
+	RpcResponseDataFor,
+	RpcSessionState,
+	RpcSetModelData,
+	RpcSuccessResponse,
+	RpcTransport,
+	SetModelCommand,
+	SetThinkingLevelCommand,
+	SteerCommand,
+} from "./rpc/index.js";
+
 // Re-exports from pi-agent-core
 export type {
 	AgentContext,
