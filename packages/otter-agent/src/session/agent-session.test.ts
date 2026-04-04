@@ -1,7 +1,7 @@
 import { describe, expect, mock, test } from "bun:test";
-import { Type } from "@sinclair/typebox";
 import type { ThinkingLevel } from "@mariozechner/pi-agent-core";
 import type { Api, Model } from "@mariozechner/pi-ai";
+import { Type } from "@sinclair/typebox";
 import type { Extension } from "../extensions/extension.js";
 import type { AgentEnvironment } from "../interfaces/agent-environment.js";
 import type { AuthStorage } from "../interfaces/auth-storage.js";
@@ -689,6 +689,67 @@ describe("createAgentSession", () => {
 		});
 
 		expect(sm.appendThinkingLevelChange).not.toHaveBeenCalled();
+		await session.dispose();
+	});
+
+	test("explicit model with auth failure falls back to undefined", async () => {
+		const registry = new ModelRegistry(createMockAuthStorage());
+		const model = registry.getAll()[0];
+		if (!model) return;
+
+		const noAuthStorage: AuthStorage = { getApiKey: async () => undefined };
+		const sm = createContextSessionManager({ model: null, thinkingLevel: "off" });
+		const { session } = await createAgentSession({
+			sessionManager: sm,
+			authStorage: noAuthStorage,
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+			model,
+		});
+
+		expect(session.agent.state.model).toBeUndefined();
+		await session.dispose();
+	});
+
+	test("model and thinking level both restored from session context", async () => {
+		const registry = new ModelRegistry(createMockAuthStorage());
+		// Use a reasoning-capable model so "high" is not clamped to "off".
+		const model = registry.getAll().find((m) => m.reasoning);
+		if (!model) return;
+
+		const sm = createContextSessionManager({
+			model: { provider: model.provider, modelId: model.id },
+			thinkingLevel: "high",
+		});
+		const { session } = await createAgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+		});
+
+		expect(session.agent.state.model?.id).toBe(model.id);
+		expect(session.agent.state.thinkingLevel).toBe("high");
+		await session.dispose();
+	});
+
+	test("reasoning-capable model preserves non-off thinking level", async () => {
+		const reasoningModel = {
+			id: "reasoning-model",
+			provider: "anthropic",
+			reasoning: true,
+		} as Model<Api>;
+		const sm = createContextSessionManager({ model: null, thinkingLevel: "off" });
+		const { session } = await createAgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+			model: reasoningModel,
+			thinkingLevel: "high",
+		});
+
+		expect(session.agent.state.thinkingLevel).toBe("high");
 		await session.dispose();
 	});
 });

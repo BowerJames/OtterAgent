@@ -77,9 +77,7 @@ export async function createAgentSession(
 	if (model) {
 		const ctxModel = sessionContext.model;
 		const modelChanged =
-			!ctxModel ||
-			ctxModel.provider !== model.provider ||
-			ctxModel.modelId !== model.id;
+			!ctxModel || ctxModel.provider !== model.provider || ctxModel.modelId !== model.id;
 		if (modelChanged) {
 			sessionManager.appendModelChange(
 				{ provider: model.provider, modelId: model.id },
