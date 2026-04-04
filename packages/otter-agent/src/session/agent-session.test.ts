@@ -1,5 +1,5 @@
 import { describe, expect, mock, test } from "bun:test";
-import type { ThinkingLevel } from "@mariozechner/pi-agent-core";
+import type { AgentMessage, ThinkingLevel } from "@mariozechner/pi-agent-core";
 import type { Api, Model } from "@mariozechner/pi-ai";
 import { Type } from "@sinclair/typebox";
 import type { Extension } from "../extensions/extension.js";
@@ -246,6 +246,40 @@ describe("AgentSession", () => {
 
 		session.compact();
 		expect(events).toHaveLength(0);
+
+		await session.dispose();
+	});
+
+	test("messages option seeds agent with prior conversation", async () => {
+		const messages: AgentMessage[] = [
+			{ role: "user", content: [{ type: "text", text: "Hello" }], timestamp: 1 },
+			{ role: "assistant", content: [{ type: "text", text: "Hi there" }], timestamp: 2 },
+		];
+
+		const session = new AgentSession({
+			sessionManager: createMockSessionManager(),
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+			messages,
+		});
+
+		expect(session.agent.state.messages).toHaveLength(2);
+		expect(session.agent.state.messages[0].role).toBe("user");
+		expect(session.agent.state.messages[1].role).toBe("assistant");
+
+		await session.dispose();
+	});
+
+	test("omitting messages option starts with empty history", async () => {
+		const session = new AgentSession({
+			sessionManager: createMockSessionManager(),
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+		});
+
+		expect(session.agent.state.messages).toHaveLength(0);
 
 		await session.dispose();
 	});
@@ -750,6 +784,54 @@ describe("createAgentSession", () => {
 		});
 
 		expect(session.agent.state.thinkingLevel).toBe("high");
+		await session.dispose();
+	});
+
+	test("messages from buildSessionContext() are seeded into the agent", async () => {
+		const messages: AgentMessage[] = [
+			{ role: "user", content: [{ type: "text", text: "Previous question" }], timestamp: 1 },
+			{ role: "assistant", content: [{ type: "text", text: "Previous answer" }], timestamp: 2 },
+		];
+
+		let entryCounter = 0;
+		const sm: SessionManager = {
+			appendMessage: mock(() => String(++entryCounter)),
+			buildSessionContext: mock(() => ({
+				messages,
+				thinkingLevel: "off" as ThinkingLevel,
+				model: null,
+			})),
+			compact: mock(() => String(++entryCounter)),
+			appendCustomEntry: mock(() => String(++entryCounter)),
+			appendCustomMessageEntry: mock(() => String(++entryCounter)),
+			appendModelChange: mock(() => String(++entryCounter)),
+			appendThinkingLevelChange: mock(() => String(++entryCounter)),
+			appendLabel: mock(() => String(++entryCounter)),
+		};
+
+		const { session } = await createAgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+		});
+
+		expect(session.agent.state.messages).toHaveLength(2);
+		expect(session.agent.state.messages[0].role).toBe("user");
+		expect(session.agent.state.messages[1].role).toBe("assistant");
+		await session.dispose();
+	});
+
+	test("empty messages from buildSessionContext() starts agent with no history", async () => {
+		const sm = createContextSessionManager({ model: null, thinkingLevel: "off" });
+		const { session } = await createAgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+		});
+
+		expect(session.agent.state.messages).toHaveLength(0);
 		await session.dispose();
 	});
 });
