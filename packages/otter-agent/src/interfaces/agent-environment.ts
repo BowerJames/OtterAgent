@@ -9,6 +9,15 @@ import type { ToolDefinition } from "./tool-definition.js";
  *
  * An agent has exactly one environment. Both methods are called once at
  * startup — they are not dynamic.
+ *
+ * Extensions receive an `AgentEnvironment` and should use capability-specific
+ * type guards to access richer APIs on concrete implementations. For example:
+ *
+ * ```ts
+ * if (isJustBashAgentEnvironment(ctx.agentEnvironment)) {
+ *   // access JustBashAgentEnvironment-specific methods here
+ * }
+ * ```
  */
 export interface AgentEnvironment {
 	/**
@@ -32,18 +41,3 @@ export interface AgentEnvironment {
 	 */
 	getTools(): ToolDefinition[];
 }
-
-/**
- * A read-only view of AgentEnvironment suitable for exposing to extensions.
- *
- * Extensions can inspect the environment's system message contribution and
- * the tools it provides, but cannot reconfigure the environment itself.
- *
- * Concrete environment instances (e.g. JustBashAgentEnvironment) can be
- * narrowed from this type using capability-specific type guards, allowing
- * extensions to opt in to richer environment APIs when available.
- */
-export type ReadonlyAgentEnvironment = Pick<
-	AgentEnvironment,
-	"getSystemMessageAppend" | "getTools"
->;

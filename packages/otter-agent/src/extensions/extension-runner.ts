@@ -6,7 +6,7 @@
  */
 import type { ThinkingLevel } from "@mariozechner/pi-agent-core";
 import type { Api, ImageContent, Model, TextContent } from "@mariozechner/pi-ai";
-import type { ReadonlyAgentEnvironment } from "../interfaces/agent-environment.js";
+import type { AgentEnvironment } from "../interfaces/agent-environment.js";
 import type { EntryId, ReadonlySessionManager } from "../interfaces/session-manager.js";
 import type { ToolDefinition } from "../interfaces/tool-definition.js";
 import type { UIProvider } from "../interfaces/ui-provider.js";
@@ -71,7 +71,7 @@ export interface ExtensionRunnerActions {
 	appendEntry: (customType: string, data?: unknown) => void;
 	setLabel: (entryId: EntryId, label: string | undefined) => void;
 	getSessionManager: () => ReadonlySessionManager;
-	getAgentEnvironment: () => ReadonlyAgentEnvironment;
+	getAgentEnvironment: () => AgentEnvironment;
 	getModel: () => Model<Api> | undefined;
 	isIdle: () => boolean;
 	getSignal: () => AbortSignal | undefined;
