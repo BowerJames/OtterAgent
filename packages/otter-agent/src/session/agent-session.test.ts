@@ -560,6 +560,33 @@ describe("AgentSession", () => {
 			await session.dispose();
 		});
 
+		test("agentEnvironment is exposed to extensions via context", async () => {
+			const environment = createMockEnvironment({ systemAppend: "env-context-test" });
+
+			const session = new AgentSession({
+				sessionManager: createMockSessionManager(),
+				authStorage: createMockAuthStorage(),
+				environment,
+				systemPrompt: "Prompt.",
+			});
+
+			let capturedEnv: unknown;
+			await session.loadExtensions([
+				(api) =>
+					api.on("session_start", (_event, ctx) => {
+						capturedEnv = ctx.agentEnvironment;
+					}),
+			]);
+
+			expect(capturedEnv).toBeDefined();
+			expect(capturedEnv).toBe(environment);
+			expect(
+				(capturedEnv as { getSystemMessageAppend(): string | undefined }).getSystemMessageAppend(),
+			).toBe("env-context-test");
+
+			await session.dispose();
+		});
+
 		test("extensionRunner is accessible", async () => {
 			const session = new AgentSession({
 				sessionManager: createMockSessionManager(),

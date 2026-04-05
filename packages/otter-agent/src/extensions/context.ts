@@ -2,6 +2,7 @@
  * Context objects passed to extension event handlers and command handlers.
  */
 import type { Api, Model } from "@mariozechner/pi-ai";
+import type { ReadonlyAgentEnvironment } from "../interfaces/agent-environment.js";
 import type { ReadonlySessionManager } from "../interfaces/session-manager.js";
 import type { UIProvider } from "../interfaces/ui-provider.js";
 
@@ -37,6 +38,9 @@ export interface ExtensionContext {
 
 	/** Session manager (read-only). */
 	sessionManager: ReadonlySessionManager;
+
+	/** The agent environment (read-only). */
+	agentEnvironment: ReadonlyAgentEnvironment;
 
 	/** Current model, if set. */
 	model: Model<Api> | undefined;

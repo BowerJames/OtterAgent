@@ -1,6 +1,7 @@
 // OtterAgent interfaces
 export type {
 	EntryId,
+	ReadonlyAgentEnvironment,
 	ReadonlySessionManager,
 	SessionContext,
 	ToolDefinition,
