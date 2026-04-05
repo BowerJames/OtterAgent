@@ -26,6 +26,10 @@ function createMockActions(): ExtensionRunnerActions {
 		appendEntry: mock(() => {}),
 		setLabel: mock(() => {}),
 		getSessionManager: mock(() => ({})),
+		getAgentEnvironment: mock(() => ({
+			getSystemMessageAppend: () => undefined,
+			getTools: () => [],
+		})),
 		getModel: mock(() => undefined),
 		isIdle: mock(() => true),
 		getSignal: mock(() => undefined),
@@ -816,6 +820,86 @@ describe("ExtensionRunner", () => {
 			await runner.emit({ type: "session_start" });
 			expect(listener1).toHaveBeenCalledTimes(1); // not called again
 			expect(listener2).toHaveBeenCalledTimes(2); // still called
+		});
+	});
+
+	// ─── ExtensionContext ────────────────────────────────────────
+
+	describe("ExtensionContext", () => {
+		test("agentEnvironment is exposed to event handlers", async () => {
+			const mockActions = createMockActions();
+			mockActions.getAgentEnvironment = mock(() => ({
+				getSystemMessageAppend: () => "test-append",
+				getTools: () => [],
+			}));
+
+			const runner = new ExtensionRunner();
+			runner.bindActions(mockActions);
+
+			let capturedEnv: unknown;
+			await runner.loadExtensions([
+				(api) =>
+					api.on("session_start", (_event, ctx) => {
+						capturedEnv = ctx.agentEnvironment;
+					}),
+			]);
+
+			await runner.emit({ type: "session_start" });
+
+			expect(capturedEnv).toBeDefined();
+			expect(
+				(capturedEnv as { getSystemMessageAppend(): string | undefined }).getSystemMessageAppend(),
+			).toBe("test-append");
+		});
+
+		test("agentEnvironment is the same object returned by getAgentEnvironment", async () => {
+			const mockActions = createMockActions();
+			const expectedEnv = {
+				getSystemMessageAppend: () => undefined,
+				getTools: () => [],
+			};
+			mockActions.getAgentEnvironment = mock(() => expectedEnv);
+
+			const runner = new ExtensionRunner();
+			runner.bindActions(mockActions);
+
+			let capturedEnv: unknown;
+			await runner.loadExtensions([
+				(api) =>
+					api.on("session_start", (_event, ctx) => {
+						capturedEnv = ctx.agentEnvironment;
+					}),
+			]);
+
+			await runner.emit({ type: "session_start" });
+
+			expect(capturedEnv).toBe(expectedEnv);
+		});
+
+		test("agentEnvironment is exposed in command context", async () => {
+			const mockActions = createMockActions();
+			const expectedEnv = {
+				getSystemMessageAppend: () => "cmd-context",
+				getTools: () => [],
+			};
+			mockActions.getAgentEnvironment = mock(() => expectedEnv);
+
+			const runner = new ExtensionRunner();
+			runner.bindActions(mockActions);
+
+			let capturedEnv: unknown;
+			await runner.loadExtensions([
+				(api) =>
+					api.registerCommand("check-env", {
+						handler: async (_args, ctx) => {
+							capturedEnv = ctx.agentEnvironment;
+						},
+					}),
+			]);
+
+			await runner.executeCommand("check-env", "");
+
+			expect(capturedEnv).toBe(expectedEnv);
 		});
 	});
 

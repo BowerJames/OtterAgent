@@ -574,6 +574,7 @@ export class AgentSession {
 				}
 			},
 			getSessionManager: () => this.sessionManager,
+			getAgentEnvironment: () => this._environment,
 			getModel: () => this.agent.state.model,
 			isIdle: () => !this.agent.state.isStreaming,
 			getSignal: () => this.agent.signal,
