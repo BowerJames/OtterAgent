@@ -322,7 +322,9 @@ async function handleExtensionUiRequest(
 			const body = request.body as string;
 			console.log(`\n${bold(title)}`);
 			console.log(body);
-			rl.prompt();
+			// Dialog requires a response to resolve the pending promise
+			sendCommand({ type: "extension_ui_response", id });
+			console.log();
 			break;
 		}
 
@@ -408,7 +410,7 @@ async function main(): Promise<void> {
 	});
 
 	let isStreaming = false;
-	let forceKill = false;
+	let shutdownSent = false;
 
 	// ─── Handle child stdout (JSONL from agent) ───────────────────
 
@@ -556,24 +558,20 @@ async function main(): Promise<void> {
 	// ─── Ctrl+C handling (two strikes) ────────────────────────────
 
 	process.on("SIGINT", () => {
-		if (forceKill) return;
-
 		if (child.exitCode !== null) {
 			// Already exiting
 			return;
 		}
 
-		// Check if we already sent shutdown (no more stdin)
-		if (child.stdin?.writableEnded) {
-			// Force kill
-			forceKill = true;
+		if (shutdownSent) {
+			// Second Ctrl+C — force kill
 			console.log(red("\nForce killing..."));
 			child.kill("SIGKILL");
 			return;
 		}
 
 		// First Ctrl+C — send graceful shutdown
-		forceKill = true;
+		shutdownSent = true;
 		console.log(yellow("\nSending shutdown... (Ctrl+C again to force kill)"));
 		sendCommand({ type: "shutdown", id: "repl_sigint" });
 
