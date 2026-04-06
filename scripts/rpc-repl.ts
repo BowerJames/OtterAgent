@@ -481,7 +481,11 @@ async function main(): Promise<void> {
 
 	function sendCommand(cmd: Record<string, unknown>): void {
 		const line = `${JSON.stringify(cmd)}\n`;
-		child.stdin?.write(line);
+		try {
+			child.stdin?.write(line);
+		} catch {
+			// stdin may have been destroyed during shutdown
+		}
 	}
 
 	// ─── REPL readline ────────────────────────────────────────────
@@ -555,7 +559,14 @@ async function main(): Promise<void> {
 		process.exit(1);
 	});
 
-	// ─── Ctrl+C handling (two strikes) ────────────────────────────
+	// ─── Ctrl+C and Ctrl+D handling ───────────────────────────────
+
+	rl.on("close", () => {
+		// Ctrl+D (EOF) — send graceful shutdown if not already sent
+		if (!shutdownSent && child.exitCode === null) {
+			sendCommand({ type: "shutdown", id: "repl_eof" });
+		}
+	});
 
 	process.on("SIGINT", () => {
 		if (child.exitCode !== null) {
