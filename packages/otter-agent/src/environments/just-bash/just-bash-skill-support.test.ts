@@ -1,6 +1,9 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import { isSkillSupportedAgentEnvironment } from "../../interfaces/skill-supported-agent-environment.js";
-import { JustBashAgentEnvironment } from "./just-bash-agent-environment.js";
+import {
+	JustBashAgentEnvironment,
+	isJustBashAgentEnvironment,
+} from "./just-bash-agent-environment.js";
 
 function makeEnv(options?: ConstructorParameters<typeof JustBashAgentEnvironment>[0]) {
 	return new JustBashAgentEnvironment(options);
@@ -20,6 +23,20 @@ describe("isSkillSupportedAgentEnvironment", () => {
 			getTools: () => [],
 		};
 		expect(isSkillSupportedAgentEnvironment(plain)).toBe(false);
+	});
+});
+
+// ─── isJustBashAgentEnvironment ───────────────────────────────────────────────
+
+describe("isJustBashAgentEnvironment", () => {
+	test("returns true for a JustBashAgentEnvironment instance", () => {
+		const env = makeEnv();
+		expect(isJustBashAgentEnvironment(env)).toBe(true);
+	});
+
+	test("returns false for a plain object", () => {
+		const plain = { getSystemMessageAppend: () => undefined, getTools: () => [] };
+		expect(isJustBashAgentEnvironment(plain)).toBe(false);
 	});
 });
 
@@ -268,13 +285,17 @@ describe("getSkillFilePath", () => {
 // ─── XML escaping in _buildSkillsSection ─────────────────────────────────────
 
 describe("getSystemMessageAppend — XML escaping", () => {
-	test("escapes < > & in skill name within XML output", () => {
+	test("escapes & < > \" ' in skill description within XML output", () => {
 		// Skill name validation prevents special chars in names,
-		// but escapeXml is applied defensively — test via description and path inspection.
+		// but escapeXml is applied defensively — test via description.
 		const env = makeEnv({ tools: ["read"] });
-		env.addSkill({ name: "a-skill", description: "A & B <test>", content: "content" });
+		env.addSkill({
+			name: "a-skill",
+			description: 'A & B <test> "quoted" it\'s',
+			content: "content",
+		});
 		const append = env.getSystemMessageAppend();
-		expect(append).toContain("A &amp; B &lt;test&gt;");
+		expect(append).toContain("A &amp; B &lt;test&gt; &quot;quoted&quot; it&apos;s");
 		expect(append).not.toContain("A & B <test>");
 	});
 });

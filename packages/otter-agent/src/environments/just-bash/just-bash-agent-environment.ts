@@ -60,7 +60,12 @@ function isValidSkillName(name: string): boolean {
 
 /** Escape characters that are special in XML/HTML text content and attributes. */
 function escapeXml(str: string): string {
-	return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+	return str
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&apos;");
 }
 
 /** Build the full SKILL.md file content (YAML frontmatter + body). */
@@ -178,8 +183,10 @@ export class JustBashAgentEnvironment implements AgentEnvironment, SkillSupporte
 	 *
 	 * Not part of {@link SkillSupportedAgentEnvironment} — this is specific to
 	 * `JustBashAgentEnvironment` because it exposes skills via the `read` tool and
-	 * the agent needs the file path to load them. Use
-	 * {@link isJustBashAgentEnvironment} to narrow before calling this method.
+	 * the agent needs the file path to load them.
+	 *
+	 * Use the {@link isJustBashAgentEnvironment} type guard to narrow an
+	 * {@link AgentEnvironment} before calling this method.
 	 */
 	getSkillFilePath(name: string): string | undefined {
 		if (!this._skills.has(name)) return undefined;
@@ -279,4 +286,16 @@ export class JustBashAgentEnvironment implements AgentEnvironment, SkillSupporte
 		const base = this._cwd.endsWith("/") ? this._cwd.slice(0, -1) : this._cwd;
 		return `${base}/skills/${name}/SKILL.md`;
 	}
+}
+
+/**
+ * Type guard that narrows an {@link AgentEnvironment} to
+ * {@link JustBashAgentEnvironment}.
+ *
+ * Use this before accessing JustBash-specific methods (e.g.
+ * {@link JustBashAgentEnvironment.getSkillFilePath}) that are not part of
+ * any shared interface.
+ */
+export function isJustBashAgentEnvironment(env: object): env is JustBashAgentEnvironment {
+	return env instanceof JustBashAgentEnvironment;
 }

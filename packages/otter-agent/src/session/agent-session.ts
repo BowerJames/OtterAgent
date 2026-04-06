@@ -700,6 +700,16 @@ export class AgentSession {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+/** Escape characters that are special in XML/HTML attributes and text content. */
+function escapeXml(str: string): string {
+	return str
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&apos;");
+}
+
 /**
  * Build the XML block injected into the conversation when a skill is invoked.
  * Follows the same format as pi-coding-agent's skill invocation messages.
@@ -720,10 +730,10 @@ export function buildSkillInvocationXml(
 
 	if (filePath) {
 		const skillDir = filePath.substring(0, filePath.lastIndexOf("/"));
-		parts.push(`<skill name="${skill.name}" location="${filePath}">`);
+		parts.push(`<skill name="${escapeXml(skill.name)}" location="${escapeXml(filePath)}">`);
 		parts.push(`References are relative to ${skillDir}/.`);
 	} else {
-		parts.push(`<skill name="${skill.name}">`);
+		parts.push(`<skill name="${escapeXml(skill.name)}">`);
 	}
 
 	parts.push("", skill.content, "</skill>");

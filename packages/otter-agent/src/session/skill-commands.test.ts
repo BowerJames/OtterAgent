@@ -124,6 +124,15 @@ describe("buildSkillInvocationXml", () => {
 		expect(xml).not.toContain("location=");
 		expect(xml).not.toContain("References are relative to");
 	});
+
+	test("XML-escapes filePath in location attribute", () => {
+		const unsafePath = "/workspace/skills/my&skill/SKILL.md";
+		const xml = buildSkillInvocationXml(skill, "", unsafePath);
+		// The attribute value must have & escaped
+		expect(xml).toContain('location="/workspace/skills/my&amp;skill/SKILL.md"');
+		// Raw & must not appear inside the attribute
+		expect(xml).not.toContain('location="/workspace/skills/my&skill/');
+	});
 });
 
 // ─── Skill command registration ───────────────────────────────────────────────

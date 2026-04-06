@@ -15,6 +15,7 @@ export { isSkillSupportedAgentEnvironment } from "./interfaces/index.js";
 // (namespace with factory methods) via declaration merging in environments/agent-environment.ts.
 export {
 	AgentEnvironment,
+	isJustBashAgentEnvironment,
 	JustBashAgentEnvironment,
 	type JustBashAgentEnvironmentOptions,
 	type JustBashToolName,
@@ -83,7 +84,6 @@ export { createEventBus, ExtensionRunner } from "./extensions/index.js";
 // AgentSession
 export {
 	AgentSession,
-	buildSkillInvocationXml,
 	buildSystemPrompt,
 	buildToolSection,
 	convertToLlm,
