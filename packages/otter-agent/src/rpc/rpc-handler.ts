@@ -10,7 +10,7 @@
  * - Shutdown is deferred (flag checked after each command)
  */
 import type { AgentSession, AgentSessionEvent } from "../session/agent-session.js";
-import { createRpcUIProvider } from "./rpc-ui-provider.js";
+import { createRpcUIProvider } from "../ui-providers/rpc-ui-provider.js";
 import type {
 	ExtensionUIResponse,
 	RpcCommand,

@@ -22,7 +22,7 @@ export {
 // Built-in UIProvider implementations.
 // UIProvider is exported as both a type (the interface) and a value
 // (namespace with factory methods) via declaration merging in ui-providers/index.ts.
-export { UIProvider, createNoOpUIProvider } from "./ui-providers/index.js";
+export { UIProvider, createNoOpUIProvider, createRpcUIProvider } from "./ui-providers/index.js";
 
 // Built-in AuthStorage implementations.
 // AuthStorage is exported as both a type (the interface) and a value
@@ -106,7 +106,7 @@ export type {
 } from "./session/index.js";
 
 // RPC handler
-export { RpcHandler, createRpcUIProvider } from "./rpc/index.js";
+export { RpcHandler } from "./rpc/index.js";
 export type { RpcHandlerOptions } from "./rpc/index.js";
 
 // RPC protocol
