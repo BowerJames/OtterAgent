@@ -63,6 +63,9 @@ export interface CreateRpcSessionOptions {
 
 	/** Additional pi-agent-core Agent options. */
 	agentOptions?: Partial<AgentOptions>;
+
+	/** Called when graceful shutdown completes. */
+	onShutdown?: () => void;
 }
 
 /** Result of {@link createRpcSession}. */
@@ -107,6 +110,7 @@ export async function createRpcSession(
 		transport,
 		resolveUIResponse: resolveResponse,
 		rejectAllUI: rejectAll,
+		onShutdown: options.onShutdown,
 	});
 
 	return { session, handler };

@@ -13,11 +13,15 @@ import { attachJsonlLineReader, serializeJsonLine } from "./jsonl.js";
  */
 export class StdioTransport implements RpcTransport {
 	private _detachReader: (() => void) | undefined;
+	private _detachStdinEnd: (() => void) | undefined;
 	private _originalConsoleLog: typeof console.log;
 	private _originalConsoleWarn: typeof console.warn;
 	private _originalConsoleInfo: typeof console.info;
+	private readonly _onStdinClose?: () => void;
 
-	constructor() {
+	constructor(onStdinClose?: () => void) {
+		this._onStdinClose = onStdinClose;
+
 		// Redirect console methods to stderr to protect the JSONL stream.
 		this._originalConsoleLog = console.log;
 		this._originalConsoleWarn = console.warn;
@@ -34,11 +38,19 @@ export class StdioTransport implements RpcTransport {
 			try {
 				parsed = JSON.parse(line);
 			} catch {
-				// Silently discard malformed lines — callers can't recover from parse errors.
+				// Silently discard malformed lines
 				return;
 			}
 			handler(parsed as RpcInboundMessage);
 		});
+
+		const onEnd = (): void => {
+			this._onStdinClose?.();
+		};
+		process.stdin.on("end", onEnd);
+		this._detachStdinEnd = () => {
+			process.stdin.off("end", onEnd);
+		};
 	}
 
 	send(message: RpcOutboundMessage): void {
@@ -48,6 +60,8 @@ export class StdioTransport implements RpcTransport {
 	close(): void {
 		this._detachReader?.();
 		this._detachReader = undefined;
+		this._detachStdinEnd?.();
+		this._detachStdinEnd = undefined;
 
 		// Restore console methods.
 		console.log = this._originalConsoleLog;

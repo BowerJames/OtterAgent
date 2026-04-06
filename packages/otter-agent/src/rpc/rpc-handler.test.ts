@@ -275,16 +275,34 @@ describe("RpcHandler", () => {
 		expect(transport.close).toHaveBeenCalled();
 	});
 
-	test("deferred shutdown stops after next command", async () => {
-		const { transport, handler } = createTestSetup();
+	test("deferred shutdown triggers graceful shutdown after next command", async () => {
+		const onShutdown = mock(() => {});
+		const transport = createMockTransport();
+		const { uiProvider, resolveResponse, rejectAll } = createRpcUIProvider(transport);
+		const session = new AgentSession({
+			sessionManager: createMockSessionManager(),
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Test prompt",
+			uiProvider,
+		});
+		const handler = new RpcHandler({
+			session,
+			transport,
+			resolveUIResponse: resolveResponse,
+			rejectAllUI: rejectAll,
+			onShutdown,
+		});
+		handler.start();
 
 		handler.requestShutdown();
 
-		// Next command should trigger stop
+		// Next command should trigger graceful shutdown
 		transport.inject({ type: "abort", id: "req_7" });
-		await new Promise((r) => setTimeout(r, 10));
+		await new Promise((r) => setTimeout(r, 50));
 
 		expect(transport.close).toHaveBeenCalled();
+		expect(onShutdown).toHaveBeenCalledTimes(1);
 	});
 
 	test("steer sends user message to session", async () => {
@@ -432,6 +450,141 @@ describe("RpcHandler", () => {
 		expect(responses[0].error).toContain("Missing required field");
 
 		handler.stop();
+	});
+});
+
+describe("RpcHandler graceful shutdown", () => {
+	test("shutdown command responds with success after shutdown completes", async () => {
+		const onShutdown = mock(() => {});
+		const transport = createMockTransport();
+		const { uiProvider, resolveResponse, rejectAll } = createRpcUIProvider(transport);
+		const session = new AgentSession({
+			sessionManager: createMockSessionManager(),
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Test prompt",
+			uiProvider,
+		});
+		const handler = new RpcHandler({
+			session,
+			transport,
+			resolveUIResponse: resolveResponse,
+			rejectAllUI: rejectAll,
+			onShutdown,
+		});
+		handler.start();
+
+		transport.inject({ type: "shutdown", id: "req_shut" });
+		await new Promise((r) => setTimeout(r, 50));
+
+		const responses = getResponses(transport);
+		const shutdownResponse = responses.find((r) => r.command === "shutdown");
+		expect(shutdownResponse).toBeDefined();
+		expect(shutdownResponse?.success).toBe(true);
+		expect(shutdownResponse?.id).toBe("req_shut");
+
+		// onShutdown should have been called
+		expect(onShutdown).toHaveBeenCalledTimes(1);
+	});
+
+	test("shutdown triggers dispose, stop, and onShutdown", async () => {
+		const onShutdown = mock(() => {});
+		const transport = createMockTransport();
+		const { uiProvider, resolveResponse, rejectAll } = createRpcUIProvider(transport);
+		const rejectAllSpy = mock((_reason: string) => rejectAll(_reason));
+		const session = new AgentSession({
+			sessionManager: createMockSessionManager(),
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Test prompt",
+			uiProvider,
+		});
+
+		const handler = new RpcHandler({
+			session,
+			transport,
+			resolveUIResponse: resolveResponse,
+			rejectAllUI: rejectAllSpy,
+			onShutdown,
+		});
+		handler.start();
+
+		transport.inject({ type: "shutdown", id: "req_order" });
+		await new Promise((r) => setTimeout(r, 50));
+
+		// Verify dispose was called (via _performGracefulShutdown)
+		expect(onShutdown).toHaveBeenCalledTimes(1);
+		// Verify transport was closed (via stop())
+		expect(transport.close).toHaveBeenCalled();
+		// Verify rejectAllUI was called (via stop())
+		expect(rejectAllSpy).toHaveBeenCalledWith("RPC handler stopped");
+	});
+
+	test("onShutdown is called after the shutdown command response is sent", async () => {
+		const order: string[] = [];
+		const onShutdown = mock(() => {
+			order.push("onShutdown");
+		});
+		const transport = createMockTransport();
+		const origSend = transport.send.bind(transport);
+		transport.send = (message) => {
+			if ((message as { command?: string }).command === "shutdown") {
+				order.push("response");
+			}
+			origSend(message);
+		};
+		const { uiProvider, resolveResponse, rejectAll } = createRpcUIProvider(transport);
+		const session = new AgentSession({
+			sessionManager: createMockSessionManager(),
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Test prompt",
+			uiProvider,
+		});
+		const handler = new RpcHandler({
+			session,
+			transport,
+			resolveUIResponse: resolveResponse,
+			rejectAllUI: rejectAll,
+			onShutdown,
+		});
+		handler.start();
+
+		transport.inject({ type: "shutdown", id: "req_timing" });
+		await new Promise((r) => setTimeout(r, 50));
+
+		expect(order).toEqual(["response", "onShutdown"]);
+	});
+
+	test("requestShutdown is idempotent", async () => {
+		const onShutdown = mock(() => {});
+		const transport = createMockTransport();
+		const { uiProvider, resolveResponse, rejectAll } = createRpcUIProvider(transport);
+		const session = new AgentSession({
+			sessionManager: createMockSessionManager(),
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Test prompt",
+			uiProvider,
+		});
+		const handler = new RpcHandler({
+			session,
+			transport,
+			resolveUIResponse: resolveResponse,
+			rejectAllUI: rejectAll,
+			onShutdown,
+		});
+		handler.start();
+
+		handler.requestShutdown();
+		handler.requestShutdown();
+		handler.requestShutdown();
+
+		await new Promise((r) => setTimeout(r, 50));
+
+		// onShutdown should only be called once
+		expect(onShutdown).toHaveBeenCalledTimes(1);
+		expect(transport.close).toHaveBeenCalledTimes(1);
 	});
 });
 

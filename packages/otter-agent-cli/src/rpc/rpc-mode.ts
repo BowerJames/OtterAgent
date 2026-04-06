@@ -7,16 +7,37 @@ import { StdioTransport } from "./stdio-transport.js";
  *
  * Creates a StdioTransport, uses `createRpcSession()` to wire the session
  * and handler together with the UIProvider baked in at construction, then
- * blocks forever — the process exits only when killed externally.
+ * blocks until a graceful shutdown is triggered (via RPC command, stdin
+ * close, or SIGTERM/SIGINT signal).
  */
 export async function runRpcMode(
 	options: Omit<CreateRpcSessionOptions, "transport">,
 ): Promise<void> {
-	const transport = new StdioTransport();
-	const { handler } = await createRpcSession({ transport, ...options });
+	// Mutable ref so the StdioTransport callback can trigger shutdown
+	// on the handler that is created after the transport.
+	const ref = { handler: null as unknown as { requestShutdown(): void } };
 
+	const transport = new StdioTransport(() => ref.handler.requestShutdown());
+
+	let resolveShutdown: () => void;
+	const shutdownPromise = new Promise<void>((resolve) => {
+		resolveShutdown = resolve;
+	});
+
+	const { handler } = await createRpcSession({
+		transport,
+		...options,
+		onShutdown: () => resolveShutdown(),
+	});
+	ref.handler = handler;
 	handler.start();
 
-	// Block forever — RPC mode runs until the process is killed.
-	return new Promise(() => {});
+	// Signal handlers for graceful shutdown
+	const shutdown = () => handler.requestShutdown();
+	process.on("SIGTERM", shutdown);
+	process.on("SIGINT", shutdown);
+
+	await shutdownPromise;
+	// Graceful shutdown complete — exit cleanly
+	process.exit(0);
 }
