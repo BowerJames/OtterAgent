@@ -54,11 +54,7 @@ function createSkillEnvironment(
 		getSkillContent(name: string): string | undefined {
 			const s = store.get(name);
 			if (!s) return undefined;
-			return `---\nname: ${s.name}\ndescription: ${s.description}\n---\n\n${s.content}`;
-		},
-		getSkillFilePath(name: string): string | undefined {
-			if (!store.has(name)) return undefined;
-			return `/workspace/skills/${name}/SKILL.md`;
+			return `---\nname: ${s.name}\ndescription: ${JSON.stringify(s.description)}\n---\n\n${s.content}`;
 		},
 	};
 }
@@ -82,45 +78,51 @@ describe("buildSkillInvocationXml", () => {
 	};
 	const filePath = "/workspace/skills/deploy/SKILL.md";
 
-	test("includes skill name and location attributes", () => {
-		const xml = buildSkillInvocationXml(skill, filePath, "");
+	test("includes skill name attribute", () => {
+		const xml = buildSkillInvocationXml(skill, "");
 		expect(xml).toContain(`name="deploy"`);
-		expect(xml).toContain(`location="${filePath}"`);
 	});
 
 	test("includes skill content body", () => {
-		const xml = buildSkillInvocationXml(skill, filePath, "");
+		const xml = buildSkillInvocationXml(skill, "");
 		expect(xml).toContain("Run npm run deploy.");
 	});
 
-	test("includes relative reference comment pointing to skill directory", () => {
-		const xml = buildSkillInvocationXml(skill, filePath, "");
-		expect(xml).toContain("References are relative to /workspace/skills/deploy/.");
+	test("opens with <skill> and closes with </skill>", () => {
+		const xml = buildSkillInvocationXml(skill, "");
+		expect(xml.startsWith("<skill")).toBe(true);
+		expect(xml).toContain("</skill>");
 	});
 
 	test("appends trimmed args after closing tag when present", () => {
-		const xml = buildSkillInvocationXml(skill, filePath, "  staging  ");
+		const xml = buildSkillInvocationXml(skill, "  staging  ");
 		expect(xml).toContain("</skill>");
 		const afterTag = xml.substring(xml.indexOf("</skill>") + "</skill>".length);
 		expect(afterTag.trim()).toBe("staging");
 	});
 
 	test("does not append args section when args is empty", () => {
-		const xml = buildSkillInvocationXml(skill, filePath, "");
+		const xml = buildSkillInvocationXml(skill, "");
 		const afterTag = xml.substring(xml.indexOf("</skill>") + "</skill>".length);
 		expect(afterTag.trim()).toBe("");
 	});
 
 	test("does not append args section when args is whitespace only", () => {
-		const xml = buildSkillInvocationXml(skill, filePath, "   ");
+		const xml = buildSkillInvocationXml(skill, "   ");
 		const afterTag = xml.substring(xml.indexOf("</skill>") + "</skill>".length);
 		expect(afterTag.trim()).toBe("");
 	});
 
-	test("opens with <skill> and closes with </skill>", () => {
-		const xml = buildSkillInvocationXml(skill, filePath, "");
-		expect(xml.startsWith("<skill")).toBe(true);
-		expect(xml).toContain("</skill>");
+	test("includes location attribute and reference hint when filePath provided", () => {
+		const xml = buildSkillInvocationXml(skill, "", filePath);
+		expect(xml).toContain(`location="${filePath}"`);
+		expect(xml).toContain("References are relative to /workspace/skills/deploy/.");
+	});
+
+	test("omits location attribute when filePath not provided", () => {
+		const xml = buildSkillInvocationXml(skill, "");
+		expect(xml).not.toContain("location=");
+		expect(xml).not.toContain("References are relative to");
 	});
 });
 

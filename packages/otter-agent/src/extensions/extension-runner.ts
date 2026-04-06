@@ -359,6 +359,10 @@ export class ExtensionRunner {
 	 * for bare names. The `skill:<name>` namespaced form is unaffected because
 	 * extensions never register commands with colons in the name.
 	 *
+	 * Note: this intentionally differs from the `registerCommand` exposed on
+	 * {@link ExtensionsAPI} (inside `_createExtensionsAPI`), which always overwrites.
+	 * That asymmetry is what enforces precedence: extensions win, skills fill gaps.
+	 *
 	 * @returns `true` if the command was registered, `false` if it already existed.
 	 */
 	registerCommand(name: string, options: CommandOptions): boolean {

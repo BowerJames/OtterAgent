@@ -63,7 +63,7 @@ function buildSkillFileContent(skill: SkillDefinition): string {
 	return [
 		"---",
 		`name: ${skill.name}`,
-		`description: ${skill.description}`,
+		`description: ${JSON.stringify(skill.description)}`,
 		"---",
 		"",
 		skill.content,
@@ -123,6 +123,9 @@ export class JustBashAgentEnvironment implements AgentEnvironment, SkillSupporte
 	 *
 	 * If the name is invalid, logs a warning and returns `false` without
 	 * throwing — the session is not affected.
+	 *
+	 * If a skill with the same name is already registered, it is overwritten
+	 * (last-write-wins). This is intentional to support reload scenarios.
 	 */
 	addSkill(skill: SkillDefinition): boolean {
 		if (!isValidSkillName(skill.name)) {
@@ -162,15 +165,6 @@ export class JustBashAgentEnvironment implements AgentEnvironment, SkillSupporte
 		const skill = this._skills.get(name);
 		if (!skill) return undefined;
 		return buildSkillFileContent(skill);
-	}
-
-	/**
-	 * Return the absolute virtual filesystem path to the skill's `SKILL.md` file,
-	 * or `undefined` if no skill with that name is registered.
-	 */
-	getSkillFilePath(name: string): string | undefined {
-		if (!this._skills.has(name)) return undefined;
-		return this._skillFilePath(name);
 	}
 
 	// ─── AgentEnvironment ─────────────────────────────────────────────────────────

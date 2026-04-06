@@ -116,9 +116,9 @@ describe("addSkill — name validation", () => {
 	});
 });
 
-// ─── addSkill / getSkills / getSkillContent / getSkillFilePath ────────────────
+// ─── addSkill / getSkills / getSkillContent ───────────────────────────────────
 
-describe("addSkill / getSkills / getSkillContent / getSkillFilePath", () => {
+describe("addSkill / getSkills / getSkillContent", () => {
 	test("getSkills() returns empty array initially", () => {
 		const env = makeEnv();
 		expect(env.getSkills()).toEqual([]);
@@ -144,25 +144,43 @@ describe("addSkill / getSkills / getSkillContent / getSkillFilePath", () => {
 		const content = env.getSkillContent("my-skill");
 		expect(content).toContain("---");
 		expect(content).toContain("name: my-skill");
-		expect(content).toContain("description: My description");
+		expect(content).toContain('"My description"');
 		expect(content).toContain("Do the thing.");
 	});
 
-	test("getSkillFilePath() returns undefined for unknown skill", () => {
+	test("getSkillContent() quotes description containing a colon", () => {
 		const env = makeEnv();
-		expect(env.getSkillFilePath("nonexistent")).toBeUndefined();
+		env.addSkill({ name: "deploy", description: "Deploy: run npm build", content: "steps" });
+		const content = env.getSkillContent("deploy");
+		// JSON.stringify wraps the value in double quotes, keeping YAML valid
+		expect(content).toContain('description: "Deploy: run npm build"');
 	});
 
-	test("getSkillFilePath() returns correct path for registered skill", () => {
-		const env = makeEnv({ cwd: "/workspace" });
-		env.addSkill({ name: "deploy", description: "Deploy", content: "steps" });
-		expect(env.getSkillFilePath("deploy")).toBe("/workspace/skills/deploy/SKILL.md");
+	test("getSkillContent() quotes description containing a newline", () => {
+		const env = makeEnv();
+		env.addSkill({ name: "my-skill", description: "Line 1\nLine 2", content: "x" });
+		const content = env.getSkillContent("my-skill");
+		// Newline must be escaped, not a literal line break in the frontmatter
+		expect(content).toContain("description:");
+		expect(content).not.toMatch(/description:.*\n.*Line 2/);
 	});
 
-	test("getSkillFilePath() handles root cwd without double slash", () => {
-		const env = makeEnv({ cwd: "/" });
-		env.addSkill({ name: "test-skill", description: "Test", content: "content" });
-		expect(env.getSkillFilePath("test-skill")).toBe("/skills/test-skill/SKILL.md");
+	test("getSkillContent() quotes description containing double quotes", () => {
+		const env = makeEnv();
+		env.addSkill({ name: "my-skill", description: 'It\'s a "test"', content: "x" });
+		const content = env.getSkillContent("my-skill");
+		expect(content).toContain("description:");
+		// Quotes inside the value must be escaped
+		expect(content).toContain('\\"test\\"');
+	});
+
+	test("addSkill() overwrites existing skill with same name (last-write-wins)", () => {
+		const env = makeEnv();
+		env.addSkill({ name: "my-skill", description: "First", content: "v1" });
+		env.addSkill({ name: "my-skill", description: "Second", content: "v2" });
+		const skills = env.getSkills();
+		expect(skills).toHaveLength(1);
+		expect(skills[0].description).toBe("Second");
 	});
 
 	test("invalid skill is not added to getSkills()", () => {
@@ -194,7 +212,7 @@ describe("virtual file creation", () => {
 		);
 		const text = (result.content[0] as { type: "text"; text: string }).text;
 		expect(text).toContain("name: my-skill");
-		expect(text).toContain("description: Does something");
+		expect(text).toContain('description: "Does something"');
 		expect(text).toContain("Step 1.");
 		expect(text).toContain("Step 2.");
 	});

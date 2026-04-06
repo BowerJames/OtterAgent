@@ -31,6 +31,9 @@ export interface SkillSupportedAgentEnvironment extends AgentEnvironment {
 	 * Validates the skill name. If the name is invalid, logs a warning and returns
 	 * `false` without throwing — the session continues unaffected.
 	 *
+	 * If a skill with the same name is already registered, it is overwritten
+	 * (last-write-wins). This is intentional to support reload scenarios.
+	 *
 	 * @returns `true` if the skill was registered, `false` if the name was invalid.
 	 */
 	addSkill(skill: SkillDefinition): boolean;
@@ -45,12 +48,6 @@ export interface SkillSupportedAgentEnvironment extends AgentEnvironment {
 	 * or `undefined` if no skill with that name is registered.
 	 */
 	getSkillContent(name: string): string | undefined;
-
-	/**
-	 * Return the absolute virtual filesystem path to the skill's `SKILL.md` file,
-	 * or `undefined` if no skill with that name is registered.
-	 */
-	getSkillFilePath(name: string): string | undefined;
 }
 
 /**
@@ -69,7 +66,6 @@ export function isSkillSupportedAgentEnvironment(
 	return (
 		typeof (env as SkillSupportedAgentEnvironment).addSkill === "function" &&
 		typeof (env as SkillSupportedAgentEnvironment).getSkills === "function" &&
-		typeof (env as SkillSupportedAgentEnvironment).getSkillContent === "function" &&
-		typeof (env as SkillSupportedAgentEnvironment).getSkillFilePath === "function"
+		typeof (env as SkillSupportedAgentEnvironment).getSkillContent === "function"
 	);
 }
