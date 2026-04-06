@@ -3,7 +3,7 @@
  *
  * Lightweight, mutually exclusive mode system for project-specific agent modes.
  * Only one mode can be active at a time. Modes can provide a prompt suffix,
- * a dynamic beforeAgentStart hook, or both.
+ * an activation message, or both.
  *
  * Commands:
  *   /mode               — clear active mode
@@ -17,17 +17,71 @@
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { developConfig } from "./develop.js";
-import { planConfig } from "./plan.js";
+import { DEVELOP_WORKFLOW_INSTRUCTIONS, developConfig } from "./develop.js";
+import { PLAN_WORKFLOW_INSTRUCTIONS, planConfig } from "./plan.js";
 import type { ModeConfig } from "./types.js";
 
 const PLAN_DEACTIVATED_MESSAGE =
 	"Plan mode has been deactivated. You may now make file writes, edits, and other changes as needed.";
 
+const DEVELOP_DEACTIVATED_MESSAGE = "Develop mode has been deactivated.";
+
 const MODES: Record<string, ModeConfig> = {
 	plan: planConfig,
 	develop: developConfig,
 };
+
+/**
+ * Parse a git remote URL to extract the owner/repo slug.
+ * Handles both HTTPS and SSH formats.
+ */
+function parseRepoSlug(remoteUrl: string): string | null {
+	// HTTPS: https://github.com/owner/repo.git
+	const httpsMatch = remoteUrl.match(/github\.com[/:]([^/]+)\/([^/\s]+?)(?:\.git)?$/);
+	if (httpsMatch) return `${httpsMatch[1]}/${httpsMatch[2]}`;
+
+	// SSH: git@github.com:owner/repo.git
+	const sshMatch = remoteUrl.match(/git@[^:]+:([^/]+)\/([^/\s]+?)(?:\.git)?$/);
+	if (sshMatch) return `${sshMatch[1]}/${sshMatch[2]}`;
+
+	return null;
+}
+
+/**
+ * Build the full activation message content for develop mode.
+ * Includes the static workflow instructions plus dynamic repo slug and issue context.
+ */
+async function buildDevelopActivationContent(
+	modeState: Record<string, unknown> | undefined,
+	pi: ExtensionAPI,
+): Promise<string> {
+	let repoLine = "";
+	try {
+		const { stdout, code } = await pi.exec("git", ["remote", "get-url", "origin"]);
+		if (code === 0 && stdout.trim()) {
+			const slug = parseRepoSlug(stdout.trim());
+			if (slug) {
+				repoLine = `\nRepository: ${slug}`;
+			}
+		}
+	} catch {
+		// git not available or no remote — omit repo line
+	}
+
+	let issueContext = "";
+	const issueNumber = modeState?.issueNumber;
+	const description = modeState?.description;
+
+	if (typeof issueNumber === "number") {
+		issueContext = `\nIssue: #${issueNumber}`;
+	} else if (typeof description === "string") {
+		issueContext = `\nNo issue exists yet — create one first.\nDescription: ${description}`;
+	} else {
+		issueContext = "\nNo issue or description provided — ask the user what they want to work on.";
+	}
+
+	return `${DEVELOP_WORKFLOW_INSTRUCTIONS}${repoLine}${issueContext}`;
+}
 
 export default function modeExtension(pi: ExtensionAPI): void {
 	let activeMode: string | null = null;
@@ -57,12 +111,12 @@ export default function modeExtension(pi: ExtensionAPI): void {
 		}
 	}
 
-	function setMode(
+	async function setMode(
 		mode: string | null,
 		state: Record<string, unknown> | undefined,
 		ctx: ExtensionContext,
 		force = false,
-	): void {
+	): Promise<void> {
 		const previousMode = activeMode;
 
 		// Toggle off if same mode already active (unless forced)
@@ -80,15 +134,38 @@ export default function modeExtension(pi: ExtensionAPI): void {
 			const label =
 				activeMode === "develop" ? buildDevelopLabel(modeState) : MODES[activeMode].label;
 			ctx.ui.notify(`Mode: ${label}`, "info");
+
+			// Send one-time activation message
+			if (activeMode === "plan") {
+				pi.sendMessage({
+					customType: "plan-context",
+					content: PLAN_WORKFLOW_INSTRUCTIONS,
+					display: true,
+				});
+			} else if (activeMode === "develop") {
+				const content = await buildDevelopActivationContent(modeState, pi);
+				pi.sendMessage({
+					customType: "develop-context",
+					content,
+					display: true,
+				});
+			}
 		} else {
 			ctx.ui.notify("Mode cleared", "info");
 		}
 
-		// Send deactivation message when leaving plan mode
+		// Send deactivation messages
 		if (previousMode === "plan" && activeMode !== "plan") {
 			pi.sendMessage({
 				customType: "plan-deactivated",
 				content: PLAN_DEACTIVATED_MESSAGE,
+				display: true,
+			});
+		}
+		if (previousMode === "develop" && activeMode !== "develop") {
+			pi.sendMessage({
+				customType: "develop-deactivated",
+				content: DEVELOP_DEACTIVATED_MESSAGE,
 				display: true,
 			});
 		}
@@ -108,7 +185,7 @@ export default function modeExtension(pi: ExtensionAPI): void {
 			const name = args.trim();
 
 			if (!name) {
-				setMode(null, undefined, ctx);
+				await setMode(null, undefined, ctx);
 				return;
 			}
 
@@ -117,7 +194,7 @@ export default function modeExtension(pi: ExtensionAPI): void {
 				return;
 			}
 
-			setMode(name, undefined, ctx);
+			await setMode(name, undefined, ctx);
 		},
 	});
 
@@ -125,9 +202,9 @@ export default function modeExtension(pi: ExtensionAPI): void {
 		description: "Toggle plan mode",
 		handler: async (_args, ctx) => {
 			if (activeMode === "plan") {
-				setMode(null, undefined, ctx);
+				await setMode(null, undefined, ctx);
 			} else {
-				setMode("plan", undefined, ctx);
+				await setMode("plan", undefined, ctx);
 			}
 		},
 	});
@@ -139,7 +216,7 @@ export default function modeExtension(pi: ExtensionAPI): void {
 
 			// Toggle off if develop is already active
 			if (activeMode === "develop" && !trimmed) {
-				setMode(null, undefined, ctx);
+				await setMode(null, undefined, ctx);
 				return;
 			}
 
@@ -149,22 +226,22 @@ export default function modeExtension(pi: ExtensionAPI): void {
 					ctx.ui.notify("Usage: /develop new <description>", "error");
 					return;
 				}
-				setMode("develop", { description }, ctx, true);
+				await setMode("develop", { description }, ctx, true);
 			} else if (/^\d+$/.test(trimmed)) {
-				setMode("develop", { issueNumber: Number.parseInt(trimmed, 10) }, ctx, true);
+				await setMode("develop", { issueNumber: Number.parseInt(trimmed, 10) }, ctx, true);
 			} else if (trimmed) {
 				ctx.ui.notify("Usage: /develop [ <issue-number> | new <description> ]", "error");
 				return;
 			} else {
 				// /develop with no args while not active — activate with no state
-				setMode("develop", undefined, ctx);
+				await setMode("develop", undefined, ctx);
 			}
 		},
 	});
 
 	// --- Events ---
 
-	// Append suffix to user messages for modes that have one (plan mode)
+	// Append suffix to user messages for modes that have one
 	pi.on("input", async (event) => {
 		if (!activeMode || !(activeMode in MODES)) return;
 		if (event.source === "extension") return;
@@ -175,31 +252,6 @@ export default function modeExtension(pi: ExtensionAPI): void {
 		return {
 			action: "transform",
 			text: `${event.text}\n\n${config.suffix}`,
-		};
-	});
-
-	// Inject dynamic context for modes that have a beforeAgentStart hook (develop mode)
-	pi.on("before_agent_start", async (_event, ctx) => {
-		if (!activeMode || !(activeMode in MODES)) return;
-
-		const config = MODES[activeMode];
-		if (!config.beforeAgentStart) return;
-
-		return config.beforeAgentStart(modeState, ctx, pi);
-	});
-
-	// Filter out stale context messages from inactive modes
-	pi.on("context", async (event) => {
-		const inactiveCustomTypes: string[] = [];
-		if (activeMode !== "develop") inactiveCustomTypes.push("develop-context");
-		if (activeMode !== "plan") inactiveCustomTypes.push("plan-context");
-
-		if (inactiveCustomTypes.length === 0) return;
-
-		return {
-			messages: event.messages.filter((m) => {
-				return !inactiveCustomTypes.includes((m as { customType?: string }).customType ?? "");
-			}),
 		};
 	});
 
