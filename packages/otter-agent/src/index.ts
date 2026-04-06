@@ -6,7 +6,6 @@ export type {
 	SkillDefinition,
 	SkillSupportedAgentEnvironment,
 	ToolDefinition,
-	UIProvider,
 } from "./interfaces/index.js";
 export { isSkillSupportedAgentEnvironment } from "./interfaces/index.js";
 
@@ -20,7 +19,10 @@ export {
 	type JustBashAgentEnvironmentOptions,
 	type JustBashToolName,
 } from "./environments/index.js";
-export { noOpUIProvider } from "./interfaces/ui.js";
+// Built-in UIProvider implementations.
+// UIProvider is exported as both a type (the interface) and a value
+// (namespace with factory methods) via declaration merging in ui-providers/index.ts.
+export { UIProvider, createNoOpUIProvider } from "./ui-providers/index.js";
 
 // Built-in AuthStorage implementations.
 // AuthStorage is exported as both a type (the interface) and a value
