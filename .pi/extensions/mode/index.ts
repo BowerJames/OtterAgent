@@ -21,6 +21,8 @@ import { developConfig } from "./develop.js";
 import { planConfig } from "./plan.js";
 import type { ModeConfig } from "./types.js";
 
+const PLAN_DEACTIVATED_MESSAGE = "Plan mode has been deactivated. You may now make file writes, edits, and other changes as needed.";
+
 const MODES: Record<string, ModeConfig> = {
 	plan: planConfig,
 	develop: developConfig,
@@ -55,6 +57,8 @@ export default function modeExtension(pi: ExtensionAPI): void {
 	}
 
 	function setMode(mode: string | null, state: Record<string, unknown> | undefined, ctx: ExtensionContext, force = false): void {
+		const previousMode = activeMode;
+
 		// Toggle off if same mode already active (unless forced)
 		if (!force && mode !== null && activeMode === mode) {
 			mode = null;
@@ -74,6 +78,15 @@ export default function modeExtension(pi: ExtensionAPI): void {
 			ctx.ui.notify(`Mode: ${label}`, "info");
 		} else {
 			ctx.ui.notify("Mode cleared", "info");
+		}
+
+		// Send deactivation message when leaving plan mode
+		if (previousMode === "plan" && activeMode !== "plan") {
+			pi.sendMessage({
+				customType: "plan-deactivated",
+				content: PLAN_DEACTIVATED_MESSAGE,
+				display: true,
+			});
 		}
 	}
 
@@ -175,6 +188,7 @@ export default function modeExtension(pi: ExtensionAPI): void {
 	pi.on("context", async (event) => {
 		const inactiveCustomTypes: string[] = [];
 		if (activeMode !== "develop") inactiveCustomTypes.push("develop-context");
+		if (activeMode !== "plan") inactiveCustomTypes.push("plan-context");
 
 		if (inactiveCustomTypes.length === 0) return;
 
