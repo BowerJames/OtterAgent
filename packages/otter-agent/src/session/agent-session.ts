@@ -18,10 +18,12 @@ import type { Extension } from "../extensions/extension.js";
 import type { AgentEnvironment } from "../interfaces/agent-environment.js";
 import type { AuthStorage } from "../interfaces/auth-storage.js";
 import type { EntryId, SessionManager } from "../interfaces/session-manager.js";
+import { isSkillSupportedAgentEnvironment } from "../interfaces/skill-supported-agent-environment.js";
 import type { ToolDefinition } from "../interfaces/tool-definition.js";
 import type { UIProvider } from "../interfaces/ui-provider.js";
 import { convertToLlm } from "./messages.js";
 import { ModelRegistry } from "./model-registry.js";
+import { buildSkillInvocationXml } from "./skill-invocation.js";
 import { buildSystemPrompt } from "./system-prompt.js";
 import { wrapToolDefinition } from "./tool-wrapper.js";
 
@@ -177,7 +179,7 @@ export class AgentSession {
 	private readonly _authStorage: AuthStorage;
 	private readonly _environment: AgentEnvironment;
 	private readonly _baseSystemPrompt: string;
-	private readonly _environmentAppend: string | undefined;
+	private _environmentAppend: string | undefined;
 	private readonly _eventListeners: Set<AgentSessionEventListener> = new Set();
 	private readonly _extensionRunner: ExtensionRunner;
 	private _unsubscribeAgent: () => void;
@@ -266,6 +268,9 @@ export class AgentSession {
 	/**
 	 * Load extensions and fire session_start.
 	 * Call this after construction to initialise extensions.
+	 *
+	 * After session_start fires (extensions may have registered skills on the
+	 * environment), the system prompt is rebuilt and skill commands are registered.
 	 */
 	async loadExtensions(extensions?: Extension[]): Promise<void> {
 		if (extensions) {
@@ -273,6 +278,12 @@ export class AgentSession {
 		}
 		await this._extensionRunner.loadExtensions(this._extensions);
 		await this._extensionRunner.emit({ type: "session_start" });
+
+		// Refresh the environment append now that extensions may have modified the
+		// environment (e.g. by registering skills on a SkillSupportedAgentEnvironment).
+		this._environmentAppend = this._environment.getSystemMessageAppend();
+		this._applyToolChanges();
+		this._registerSkillCommands();
 	}
 
 	/** Get the extension runner for direct access (commands, error listeners, etc). */
@@ -287,6 +298,11 @@ export class AgentSession {
 		this._extensionRunner.clear();
 		await this._extensionRunner.loadExtensions(this._extensions);
 		await this._extensionRunner.emit({ type: "session_start" });
+
+		// Refresh environment append and skill commands after reload.
+		this._environmentAppend = this._environment.getSystemMessageAppend();
+		this._applyToolChanges();
+		this._registerSkillCommands();
 	}
 
 	// ─── Core Interaction ─────────────────────────────────────────────
@@ -642,5 +658,42 @@ export class AgentSession {
 	private _applyToolChanges(): void {
 		this.agent.setTools(this._getActiveTools());
 		this.agent.setSystemPrompt(this._getCurrentSystemPrompt());
+	}
+
+	/**
+	 * Register commands for all skills on a SkillSupportedAgentEnvironment.
+	 *
+	 * Each skill gets two commands:
+	 * - `<name>` — bare form (skipped if an extension command already uses the name)
+	 * - `skill:<name>` — namespaced form (always available, never collides)
+	 *
+	 * Called after loadExtensions() and reload() so that skills registered
+	 * during session_start are available before the user types any input.
+	 */
+	private _registerSkillCommands(): void {
+		const env = this._environment;
+		if (!isSkillSupportedAgentEnvironment(env)) return;
+
+		for (const skill of env.getSkills()) {
+			const handler = async (args: string): Promise<void> => {
+				// Duck-type check: environments that expose getSkillFilePath (e.g.
+				// JustBashAgentEnvironment, which uses the read tool) include the
+				// location in the XML so the agent knows where to find the file.
+				const pathProvider = env as { getSkillFilePath?: (name: string) => string | undefined };
+				const filePath =
+					typeof pathProvider.getSkillFilePath === "function"
+						? pathProvider.getSkillFilePath(skill.name)
+						: undefined;
+				const xml = buildSkillInvocationXml(skill, args, filePath);
+				await this.prompt(xml);
+			};
+
+			const commandOptions = { description: skill.description, handler };
+
+			// Bare name: only if no extension command already owns it.
+			this._extensionRunner.registerCommand(skill.name, commandOptions);
+			// Namespaced form: always register.
+			this._extensionRunner.registerCommand(`skill:${skill.name}`, commandOptions);
+		}
 	}
 }

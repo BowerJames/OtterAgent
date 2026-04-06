@@ -7,8 +7,10 @@ import type { ToolDefinition } from "./tool-definition.js";
  * agents to work in non-filesystem environments (remote servers, containers,
  * cloud services, etc.).
  *
- * An agent has exactly one environment. Both methods are called once at
- * startup — they are not dynamic.
+ * An agent has exactly one environment. `getTools()` is called once at startup.
+ * `getSystemMessageAppend()` is called at startup and again after extensions
+ * load, so that environments implementing {@link SkillSupportedAgentEnvironment}
+ * can reflect skills registered during `session_start`.
  *
  * Extensions receive an `AgentEnvironment` and should use capability-specific
  * type guards to access richer APIs on concrete implementations. For example:

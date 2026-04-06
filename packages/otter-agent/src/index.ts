@@ -3,15 +3,19 @@ export type {
 	EntryId,
 	ReadonlySessionManager,
 	SessionContext,
+	SkillDefinition,
+	SkillSupportedAgentEnvironment,
 	ToolDefinition,
 	UIProvider,
 } from "./interfaces/index.js";
+export { isSkillSupportedAgentEnvironment } from "./interfaces/index.js";
 
 // Built-in AgentEnvironment implementations.
 // AgentEnvironment is exported as both a type (the interface) and a value
 // (namespace with factory methods) via declaration merging in environments/agent-environment.ts.
 export {
 	AgentEnvironment,
+	isJustBashAgentEnvironment,
 	JustBashAgentEnvironment,
 	type JustBashAgentEnvironmentOptions,
 	type JustBashToolName,
