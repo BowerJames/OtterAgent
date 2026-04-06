@@ -236,6 +236,49 @@ describe("virtual file creation", () => {
 	});
 });
 
+// ─── getSkillFilePath ─────────────────────────────────────────────────────────
+
+describe("getSkillFilePath", () => {
+	test("returns undefined for an unknown skill", () => {
+		const env = makeEnv({ cwd: "/workspace" });
+		expect(env.getSkillFilePath("nonexistent")).toBeUndefined();
+	});
+
+	test("returns the correct path for a registered skill", () => {
+		const env = makeEnv({ cwd: "/workspace" });
+		env.addSkill({ name: "my-skill", description: "desc", content: "content" });
+		expect(env.getSkillFilePath("my-skill")).toBe("/workspace/skills/my-skill/SKILL.md");
+	});
+
+	test("handles cwd with trailing slash", () => {
+		const env = makeEnv({ cwd: "/workspace/" });
+		env.addSkill({ name: "review", description: "desc", content: "content" });
+		expect(env.getSkillFilePath("review")).toBe("/workspace/skills/review/SKILL.md");
+	});
+
+	test("returns undefined after only invalid skills were added", () => {
+		const env = makeEnv({ cwd: "/workspace" });
+		const spy = spyOn(console, "warn").mockImplementation(() => {});
+		env.addSkill({ name: "INVALID", description: "desc", content: "x" });
+		expect(env.getSkillFilePath("INVALID")).toBeUndefined();
+		spy.mockRestore();
+	});
+});
+
+// ─── XML escaping in _buildSkillsSection ─────────────────────────────────────
+
+describe("getSystemMessageAppend — XML escaping", () => {
+	test("escapes < > & in skill name within XML output", () => {
+		// Skill name validation prevents special chars in names,
+		// but escapeXml is applied defensively — test via description and path inspection.
+		const env = makeEnv({ tools: ["read"] });
+		env.addSkill({ name: "a-skill", description: "A & B <test>", content: "content" });
+		const append = env.getSystemMessageAppend();
+		expect(append).toContain("A &amp; B &lt;test&gt;");
+		expect(append).not.toContain("A & B <test>");
+	});
+});
+
 // ─── getSystemMessageAppend — skills section ──────────────────────────────────
 
 describe("getSystemMessageAppend — skills section", () => {

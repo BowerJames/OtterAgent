@@ -676,7 +676,15 @@ export class AgentSession {
 
 		for (const skill of env.getSkills()) {
 			const handler = async (args: string): Promise<void> => {
-				const xml = buildSkillInvocationXml(skill, args);
+				// Duck-type check: environments that expose getSkillFilePath (e.g.
+				// JustBashAgentEnvironment, which uses the read tool) include the
+				// location in the XML so the agent knows where to find the file.
+				const pathProvider = env as { getSkillFilePath?: (name: string) => string | undefined };
+				const filePath =
+					typeof pathProvider.getSkillFilePath === "function"
+						? pathProvider.getSkillFilePath(skill.name)
+						: undefined;
+				const xml = buildSkillInvocationXml(skill, args, filePath);
 				await this.prompt(xml);
 			};
 

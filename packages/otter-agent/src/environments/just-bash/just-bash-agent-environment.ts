@@ -58,6 +58,11 @@ function isValidSkillName(name: string): boolean {
 	return true;
 }
 
+/** Escape characters that are special in XML/HTML text content and attributes. */
+function escapeXml(str: string): string {
+	return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 /** Build the full SKILL.md file content (YAML frontmatter + body). */
 function buildSkillFileContent(skill: SkillDefinition): string {
 	return [
@@ -167,6 +172,20 @@ export class JustBashAgentEnvironment implements AgentEnvironment, SkillSupporte
 		return buildSkillFileContent(skill);
 	}
 
+	/**
+	 * Return the absolute virtual filesystem path to the skill's `SKILL.md` file,
+	 * or `undefined` if no skill with that name is registered.
+	 *
+	 * Not part of {@link SkillSupportedAgentEnvironment} — this is specific to
+	 * `JustBashAgentEnvironment` because it exposes skills via the `read` tool and
+	 * the agent needs the file path to load them. Use
+	 * {@link isJustBashAgentEnvironment} to narrow before calling this method.
+	 */
+	getSkillFilePath(name: string): string | undefined {
+		if (!this._skills.has(name)) return undefined;
+		return this._skillFilePath(name);
+	}
+
 	// ─── AgentEnvironment ─────────────────────────────────────────────────────────
 
 	getSystemMessageAppend(): string {
@@ -234,9 +253,9 @@ export class JustBashAgentEnvironment implements AgentEnvironment, SkillSupporte
 				const filePath = this._skillFilePath(skill.name);
 				return [
 					"  <skill>",
-					`    <name>${skill.name}</name>`,
-					`    <description>${skill.description}</description>`,
-					`    <location>${filePath}</location>`,
+					`    <name>${escapeXml(skill.name)}</name>`,
+					`    <description>${escapeXml(skill.description)}</description>`,
+					`    <location>${escapeXml(filePath)}</location>`,
 					"  </skill>",
 				].join("\n");
 			})
