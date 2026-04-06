@@ -23,6 +23,17 @@
         "@mariozechner/pi-coding-agent": "^0.64.0",
       },
     },
+    "packages/otter-agent-cli": {
+      "name": "@otter-agent/cli",
+      "version": "0.0.1",
+      "bin": {
+        "otter": "./dist/cli.js",
+      },
+      "dependencies": {
+        "@mariozechner/pi-agent-core": "^0.64.0",
+        "@otter-agent/core": "workspace:*",
+      },
+    },
   },
   "packages": {
     "@anthropic-ai/sdk": ["@anthropic-ai/sdk@0.73.0", "", { "dependencies": { "json-schema-to-ts": "^3.1.1" }, "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" }, "optionalPeers": ["zod"], "bin": { "anthropic-ai-sdk": "bin/cli" } }, "sha512-URURVzhxXGJDGUGFunIOtBlSl7KWvZiAAKY/ttTkZAkXT9bTPqdk2eK0b8qqSxXpikh3QKPnPYpiyX98zf5ebw=="],
@@ -164,6 +175,8 @@
     "@mixmark-io/domino": ["@mixmark-io/domino@2.2.0", "", {}, "sha512-Y28PR25bHXUg88kCV7nivXrP2Nj2RueZ3/l/jdx6J9f8J4nsEGcgX0Qe6lt7Pa+J79+kPiJU3LguR6O/6zrLOw=="],
 
     "@mongodb-js/zstd": ["@mongodb-js/zstd@7.0.0", "", { "dependencies": { "node-addon-api": "^8.5.0", "prebuild-install": "^7.1.3" } }, "sha512-mQ2s0pYYiav+tzCDR05Zptem8Ey2v8s11lri5RKGhTtL4COVCvVCk5vtyRYNT+9L8qSfyOqqefF9UtnW8mC5jA=="],
+
+    "@otter-agent/cli": ["@otter-agent/cli@workspace:packages/otter-agent-cli"],
 
     "@otter-agent/core": ["@otter-agent/core@workspace:packages/otter-agent"],
 
