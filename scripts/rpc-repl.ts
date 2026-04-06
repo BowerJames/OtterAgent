@@ -179,29 +179,37 @@ function formatJson(obj: unknown, max = 120): string {
 }
 
 /**
- * Extract text from an assistant message delta event.
+ * Extract text from an assistant message update event.
  *
- * The pi-ai AssistantMessageEvent has a `delta` field with content blocks.
- * We look for `{ type: "text", text: "..." }` blocks and extract the text.
+ * The pi-ai AssistantMessageEvent is a discriminated union. For streaming text,
+ * the relevant event types are:
+ *   - `text_delta`: { type: "text_delta", delta: string, ... }
+ *   - `thinking_delta`: { type: "thinking_delta", delta: string, ... }
+ *
+ * The AgentSession wraps this in an AgentEvent with
+ *   { type: "message_update", message, assistantMessageEvent }.
+ * The RPC layer forwards it as:
+ *   { type: "event", event: "message_update", payload: { type: "message_update", message, assistantMessageEvent } }
  */
-function extractTextFromDelta(event: unknown): string | undefined {
+function extractTextFromMessageUpdate(event: unknown): string | undefined {
 	const e = event as Record<string, unknown>;
-	const delta = e?.payload as Record<string, unknown> | undefined;
-	const assistantEvent = delta?.assistantMessageEvent as Record<string, unknown> | undefined;
-	const deltaBlocks = assistantEvent?.delta as Array<Record<string, unknown>> | undefined;
+	const payload = e?.payload as Record<string, unknown> | undefined;
+	const assistantEvent = payload?.assistantMessageEvent as Record<string, unknown> | undefined;
 
-	if (!Array.isArray(deltaBlocks)) return undefined;
+	if (!assistantEvent) return undefined;
 
-	const parts: string[] = [];
-	for (const block of deltaBlocks) {
-		if (block.type === "text" && typeof block.text === "string") {
-			parts.push(block.text);
-		} else if (block.type === "thinking" && typeof block.thinking === "string") {
-			// Show thinking in dim
-			parts.push(dim(block.thinking));
-		}
+	const eventType = assistantEvent.type as string;
+	const delta = assistantEvent.delta as string | undefined;
+
+	if (typeof delta !== "string") return undefined;
+
+	if (eventType === "text_delta") {
+		return delta;
 	}
-	return parts.length > 0 ? parts.join("") : undefined;
+	if (eventType === "thinking_delta") {
+		return dim(delta);
+	}
+	return undefined;
 }
 
 // ─── Event display ────────────────────────────────────────────────────
@@ -231,7 +239,7 @@ function displayEvent(event: Record<string, unknown>): void {
 		}
 
 		case "message_update": {
-			const text = extractTextFromDelta(event);
+			const text = extractTextFromMessageUpdate(event);
 			if (text) {
 				process.stdout.write(text);
 			}
@@ -354,9 +362,8 @@ async function handleExtensionUiRequest(
 			});
 			const idx = Number.parseInt(answer, 10) - 1;
 			if (idx >= 0 && idx < items.length) {
-				const item = items[idx];
-				const value = typeof item === "string" ? item : JSON.stringify(item);
-				sendCommand({ type: "extension_ui_response", id, value, cancelled: false });
+				// RpcUIProvider.select() expects value to be the numeric index as a string
+				sendCommand({ type: "extension_ui_response", id, value: String(idx), cancelled: false });
 			} else {
 				sendCommand({ type: "extension_ui_response", id, cancelled: true });
 			}
@@ -526,13 +533,6 @@ async function main(): Promise<void> {
 		// Regular prompt — send to agent
 		sendCommand({ type: "prompt", message: trimmed });
 		// The prompt will be re-shown after agent_end event
-	});
-
-	rl.on("close", () => {
-		if (!forceKill) {
-			// Ctrl+C — send graceful shutdown
-			sendCommand({ type: "shutdown", id: "repl_ctrlc" });
-		}
 	});
 
 	// ─── Graceful shutdown timeout ────────────────────────────────
