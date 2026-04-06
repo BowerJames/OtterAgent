@@ -10,6 +10,9 @@ import { createWriteToolDefinition } from "./tools/write.js";
 /** Execution limits configuration for the just-bash interpreter. */
 type ExecutionLimits = NonNullable<BashOptions["executionLimits"]>;
 
+/** Names of the tools exposed by {@link JustBashAgentEnvironment}. */
+export type JustBashToolName = "bash" | "read" | "write" | "edit";
+
 export interface JustBashAgentEnvironmentOptions {
 	/** Initial files to seed the virtual filesystem with. */
 	files?: InitialFiles;
@@ -23,6 +26,17 @@ export interface JustBashAgentEnvironmentOptions {
 	network?: NetworkConfig;
 	/** Allowlist of built-in command names. All built-ins enabled when omitted. */
 	commands?: CommandName[];
+	/**
+	 * Tools to expose to the agent. When omitted, all four tools are included.
+	 * Pass an explicit array to restrict which tools are available.
+	 *
+	 * @example
+	 * ```ts
+	 * // Only expose bash and read — no write or edit.
+	 * new JustBashAgentEnvironment({ tools: ["bash", "read"] });
+	 * ```
+	 */
+	tools?: JustBashToolName[];
 }
 
 /**
@@ -51,12 +65,15 @@ export class JustBashAgentEnvironment implements AgentEnvironment {
 			commands: options.commands,
 		});
 
-		this._tools = [
-			createBashToolDefinition(this._bash),
-			createReadToolDefinition(this._bash, cwd),
-			createWriteToolDefinition(this._bash, cwd),
-			createEditToolDefinition(this._bash, cwd),
-		];
+		const allTools: Record<JustBashToolName, ToolDefinition> = {
+			bash: createBashToolDefinition(this._bash),
+			read: createReadToolDefinition(this._bash, cwd),
+			write: createWriteToolDefinition(this._bash, cwd),
+			edit: createEditToolDefinition(this._bash, cwd),
+		};
+
+		const enabled = options.tools ?? (["bash", "read", "write", "edit"] as JustBashToolName[]);
+		this._tools = enabled.map((name) => allTools[name]);
 	}
 
 	getSystemMessageAppend(): string {

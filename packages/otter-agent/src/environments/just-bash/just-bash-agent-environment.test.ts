@@ -39,6 +39,23 @@ describe("JustBashAgentEnvironment", () => {
 		expect(names).toEqual(["bash", "read", "write", "edit"]);
 	});
 
+	test("getTools() returns only specified tools when tools option is provided", () => {
+		const env = makeEnv({ tools: ["bash", "read"] });
+		const names = env.getTools().map((t) => t.name);
+		expect(names).toEqual(["bash", "read"]);
+	});
+
+	test("getTools() returns empty array when tools option is empty", () => {
+		const env = makeEnv({ tools: [] });
+		expect(env.getTools()).toEqual([]);
+	});
+
+	test("getTools() preserves order from tools option", () => {
+		const env = makeEnv({ tools: ["edit", "bash"] });
+		const names = env.getTools().map((t) => t.name);
+		expect(names).toEqual(["edit", "bash"]);
+	});
+
 	test("getSystemMessageAppend() returns a non-empty string describing the environment", () => {
 		const env = makeEnv({ cwd: "/workspace" });
 		const append = env.getSystemMessageAppend();

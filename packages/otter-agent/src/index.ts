@@ -14,6 +14,7 @@ export {
 	AgentEnvironment,
 	JustBashAgentEnvironment,
 	type JustBashAgentEnvironmentOptions,
+	type JustBashToolName,
 } from "./environments/index.js";
 export { noOpUIProvider } from "./interfaces/ui.js";
 

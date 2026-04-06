@@ -2,9 +2,10 @@ import type { AgentEnvironment as IAgentEnvironment } from "../interfaces/agent-
 import {
 	JustBashAgentEnvironment,
 	type JustBashAgentEnvironmentOptions,
+	type JustBashToolName,
 } from "./just-bash/just-bash-agent-environment.js";
 
-export { JustBashAgentEnvironment, type JustBashAgentEnvironmentOptions };
+export { JustBashAgentEnvironment, type JustBashAgentEnvironmentOptions, type JustBashToolName };
 
 /**
  * Namespace providing factory methods for built-in {@link IAgentEnvironment}
