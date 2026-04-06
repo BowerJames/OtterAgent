@@ -21,7 +21,8 @@ import { developConfig } from "./develop.js";
 import { planConfig } from "./plan.js";
 import type { ModeConfig } from "./types.js";
 
-const PLAN_DEACTIVATED_MESSAGE = "Plan mode has been deactivated. You may now make file writes, edits, and other changes as needed.";
+const PLAN_DEACTIVATED_MESSAGE =
+	"Plan mode has been deactivated. You may now make file writes, edits, and other changes as needed.";
 
 const MODES: Record<string, ModeConfig> = {
 	plan: planConfig,
@@ -56,7 +57,12 @@ export default function modeExtension(pi: ExtensionAPI): void {
 		}
 	}
 
-	function setMode(mode: string | null, state: Record<string, unknown> | undefined, ctx: ExtensionContext, force = false): void {
+	function setMode(
+		mode: string | null,
+		state: Record<string, unknown> | undefined,
+		ctx: ExtensionContext,
+		force = false,
+	): void {
 		const previousMode = activeMode;
 
 		// Toggle off if same mode already active (unless forced)
@@ -72,9 +78,7 @@ export default function modeExtension(pi: ExtensionAPI): void {
 
 		if (activeMode) {
 			const label =
-				activeMode === "develop"
-					? buildDevelopLabel(modeState)
-					: MODES[activeMode].label;
+				activeMode === "develop" ? buildDevelopLabel(modeState) : MODES[activeMode].label;
 			ctx.ui.notify(`Mode: ${label}`, "info");
 		} else {
 			ctx.ui.notify("Mode cleared", "info");
@@ -142,14 +146,14 @@ export default function modeExtension(pi: ExtensionAPI): void {
 			if (trimmed.startsWith("new ")) {
 				const description = trimmed.slice(4).trim();
 				if (!description) {
-					ctx.ui.notify('Usage: /develop new <description>', "error");
+					ctx.ui.notify("Usage: /develop new <description>", "error");
 					return;
 				}
 				setMode("develop", { description }, ctx, true);
 			} else if (/^\d+$/.test(trimmed)) {
 				setMode("develop", { issueNumber: Number.parseInt(trimmed, 10) }, ctx, true);
 			} else if (trimmed) {
-				ctx.ui.notify('Usage: /develop [ <issue-number> | new <description> ]', "error");
+				ctx.ui.notify("Usage: /develop [ <issue-number> | new <description> ]", "error");
 				return;
 			} else {
 				// /develop with no args while not active — activate with no state

@@ -21,6 +21,7 @@ import type { EntryId, SessionManager } from "../interfaces/session-manager.js";
 import { isSkillSupportedAgentEnvironment } from "../interfaces/skill-supported-agent-environment.js";
 import type { ToolDefinition } from "../interfaces/tool-definition.js";
 import type { UIProvider } from "../interfaces/ui-provider.js";
+import { createNoOpUIProvider } from "../ui-providers/no-op-ui-provider.js";
 import { convertToLlm } from "./messages.js";
 import { ModelRegistry } from "./model-registry.js";
 import { buildSkillInvocationXml } from "./skill-invocation.js";
@@ -130,7 +131,7 @@ export interface AgentSessionOptions {
 	/** Initial thinking level. */
 	thinkingLevel?: ThinkingLevel;
 
-	/** Optional UI provider for extension interaction. */
+	/** Optional UI provider for extension interaction. Defaults to NoOp. */
 	uiProvider?: UIProvider;
 
 	/** Extensions to load. */
@@ -170,8 +171,8 @@ export class AgentSession {
 	/** Session persistence manager. */
 	readonly sessionManager: SessionManager;
 
-	/** Optional UI provider for extensions. */
-	uiProvider: UIProvider | undefined;
+	/** UI provider for extension interaction. Always set (defaults to NoOp). */
+	readonly uiProvider: UIProvider;
 
 	/** Model registry for provider management. */
 	readonly modelRegistry: ModelRegistry;
@@ -195,7 +196,7 @@ export class AgentSession {
 		this._authStorage = options.authStorage;
 		this._environment = options.environment;
 		this._baseSystemPrompt = options.systemPrompt;
-		this.uiProvider = options.uiProvider;
+		this.uiProvider = options.uiProvider ?? createNoOpUIProvider();
 		this._extensions = options.extensions ?? [];
 
 		// Create model registry
@@ -203,9 +204,7 @@ export class AgentSession {
 
 		// Create extension runner
 		this._extensionRunner = new ExtensionRunner();
-		if (options.uiProvider) {
-			this._extensionRunner.setUIProvider(options.uiProvider);
-		}
+		this._extensionRunner.setUIProvider(this.uiProvider);
 		this._extensionRunner.setModelRegistry(this.modelRegistry);
 
 		// Resolve environment at startup (called once)
@@ -289,17 +288,6 @@ export class AgentSession {
 	/** Get the extension runner for direct access (commands, error listeners, etc). */
 	get extensionRunner(): ExtensionRunner {
 		return this._extensionRunner;
-	}
-
-	/**
-	 * Set the UI provider for extension interaction after construction.
-	 *
-	 * Useful when the UIProvider depends on the session (e.g. RpcUIProvider
-	 * created alongside an RpcHandler after the session is constructed).
-	 */
-	setUIProvider(provider: UIProvider): void {
-		this.uiProvider = provider;
-		this._extensionRunner.setUIProvider(provider);
 	}
 
 	/**

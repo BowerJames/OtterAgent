@@ -4,7 +4,6 @@ import { createNoOpUIProvider } from "./no-op-ui-provider.js";
 import { createRpcUIProvider } from "./rpc-ui-provider.js";
 
 export { createNoOpUIProvider } from "./no-op-ui-provider.js";
-export { createRpcUIProvider } from "./rpc-ui-provider.js";
 
 /**
  * Namespace providing factory methods for built-in {@link IUIProvider}

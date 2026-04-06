@@ -10,7 +10,6 @@
  * - Shutdown is deferred (flag checked after each command)
  */
 import type { AgentSession, AgentSessionEvent } from "../session/agent-session.js";
-import { createRpcUIProvider } from "../ui-providers/rpc-ui-provider.js";
 import type {
 	ExtensionUIResponse,
 	RpcCommand,
@@ -24,6 +23,10 @@ import type {
 export interface RpcHandlerOptions {
 	session: AgentSession;
 	transport: RpcTransport;
+	/** Resolves an extension UI response arriving from the client. */
+	resolveUIResponse: (response: ExtensionUIResponse) => void;
+	/** Rejects all pending extension UI requests (used during shutdown). */
+	rejectAllUI: (reason: string) => void;
 }
 
 export class RpcHandler {
@@ -35,17 +38,11 @@ export class RpcHandler {
 	private _shutdownRequested = false;
 	private _lastState: RpcSessionState | undefined;
 
-	/** The UIProvider to pass to AgentSessionOptions. */
-	readonly uiProvider;
-
 	constructor(options: RpcHandlerOptions) {
 		this._session = options.session;
 		this._transport = options.transport;
-
-		const { uiProvider, resolveResponse, rejectAll } = createRpcUIProvider(this._transport);
-		this.uiProvider = uiProvider;
-		this._resolveUIResponse = resolveResponse;
-		this._rejectAllUI = rejectAll;
+		this._resolveUIResponse = options.resolveUIResponse;
+		this._rejectAllUI = options.rejectAllUI;
 	}
 
 	/** Start listening for commands and forwarding events. */
@@ -66,7 +63,7 @@ export class RpcHandler {
 		// Handle incoming messages
 		this._transport.onMessage((message: RpcInboundMessage) => {
 			if (message.type === "extension_ui_response") {
-				this._resolveUIResponse(message);
+				this._resolveUIResponse(message as ExtensionUIResponse);
 				return;
 			}
 			this._handleCommand(message).catch((err) => {

@@ -1,20 +1,19 @@
-import { type AgentSession, RpcHandler } from "@otter-agent/core";
+import type { CreateRpcSessionOptions } from "@otter-agent/core";
+import { createRpcSession } from "@otter-agent/core";
 import { StdioTransport } from "./stdio-transport.js";
 
 /**
  * Run the agent in RPC mode.
  *
- * Creates a StdioTransport, wires it to an RpcHandler, sets up the
- * UIProvider on the session, and blocks forever — the process exits
- * only when killed externally.
+ * Creates a StdioTransport, uses `createRpcSession()` to wire the session
+ * and handler together with the UIProvider baked in at construction, then
+ * blocks forever — the process exits only when killed externally.
  */
-export async function runRpcMode(session: AgentSession): Promise<void> {
+export async function runRpcMode(
+	options: Omit<CreateRpcSessionOptions, "transport">,
+): Promise<void> {
 	const transport = new StdioTransport();
-	const handler = new RpcHandler({ session, transport });
-
-	// Wire the UIProvider created by RpcHandler into the session so
-	// that extensions loaded after session construction can use it.
-	session.setUIProvider(handler.uiProvider);
+	const { handler } = await createRpcSession({ transport, ...options });
 
 	handler.start();
 

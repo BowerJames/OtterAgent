@@ -42,3 +42,9 @@ export type {
 
 export { RpcHandler } from "./rpc-handler.js";
 export type { RpcHandlerOptions } from "./rpc-handler.js";
+
+export { createRpcSession } from "./create-rpc-session.js";
+export type {
+	CreateRpcSessionOptions,
+	CreateRpcSessionResult,
+} from "./create-rpc-session.js";
