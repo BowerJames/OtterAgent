@@ -101,15 +101,15 @@ export default function modeExtension(pi: ExtensionAPI): void {
 
 	pi.on("session_start", async (_event, ctx) => {
 		const entries = ctx.sessionManager.getEntries();
-		const modeEntry = entries
-			.filter(
-				(e: { type: string; customType?: string }) =>
-					e.type === "custom" && e.customType === "mode",
-			)
-			.pop() as { data?: { mode: string | null } } | undefined;
-
-		if (modeEntry?.data) {
-			activeMode = modeEntry.data.mode;
+		for (let i = entries.length - 1; i >= 0; i--) {
+			const entry = entries[i];
+			if (entry.type === "custom" && "customType" in entry && entry.customType === "mode") {
+				const mode = entry.data?.mode;
+				if (typeof mode === "string" && mode in MODES) {
+					activeMode = mode;
+				}
+				break;
+			}
 		}
 
 		updateStatus(ctx);
