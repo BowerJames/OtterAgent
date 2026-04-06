@@ -1,5 +1,5 @@
 ---
-name: pi-review
+name: code-review
 description: Run an independent code review using pi-coding-agent. Use after completing an implementation to get a second opinion before pushing. Pass the issue number or a short description of what was implemented.
 argument-hint: "[issue-number or description]"
 ---

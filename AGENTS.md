@@ -64,6 +64,16 @@ Format all files:
 bun run format
 ```
 
+## Code Review
+
+Before pushing to `main` or opening a pull request when completing a GitHub issue, an independent review must be run using the **code-review** skill:
+
+```
+/skill:code-review <issue-number>
+```
+
+Review the findings with the user before proceeding. If the reviewer raises issues, fix them and re-run the review to confirm before pushing.
+
 ## Conventions
 
 - **ESM-only** — all packages use `"type": "module"`

@@ -66,13 +66,9 @@ bun run format
 
 ## Code Review
 
-Before pushing to `main` or opening a pull request when completing a GitHub issue, an independent review must be run using the pi-coding-agent. Use the `/pi-review` skill:
+Before pushing to `main` or opening a pull request when completing a GitHub issue, an independent review must be run using the **code-review** skill.
 
-```
-/pi-review <issue-number>
-```
-
-This calls `pi --model glm-5-turbo` with a structured prompt covering accuracy, completeness, lint, tests, and build. Review the findings with the user before proceeding. If the reviewer raises issues, fix them and re-run the review to confirm before pushing.
+Review the findings with the user before proceeding. If the reviewer raises issues, fix them and re-run the review to confirm before pushing.
 
 ## Conventions
 

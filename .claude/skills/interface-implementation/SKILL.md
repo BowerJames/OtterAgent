@@ -1,5 +1,5 @@
 ---
-name: add-implementation
+name: interface-implementation
 description: Add a built-in implementation of an interface in OtterAgent. Use when implementing a new built-in for an existing interface (e.g. a new SessionManager, AuthStorage, or UIProvider).
 ---
 
