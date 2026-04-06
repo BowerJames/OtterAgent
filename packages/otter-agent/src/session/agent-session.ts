@@ -171,7 +171,7 @@ export class AgentSession {
 	readonly sessionManager: SessionManager;
 
 	/** Optional UI provider for extensions. */
-	readonly uiProvider: UIProvider | undefined;
+	uiProvider: UIProvider | undefined;
 
 	/** Model registry for provider management. */
 	readonly modelRegistry: ModelRegistry;
@@ -289,6 +289,17 @@ export class AgentSession {
 	/** Get the extension runner for direct access (commands, error listeners, etc). */
 	get extensionRunner(): ExtensionRunner {
 		return this._extensionRunner;
+	}
+
+	/**
+	 * Set the UI provider for extension interaction after construction.
+	 *
+	 * Useful when the UIProvider depends on the session (e.g. RpcUIProvider
+	 * created alongside an RpcHandler after the session is constructed).
+	 */
+	setUIProvider(provider: UIProvider): void {
+		this.uiProvider = provider;
+		this._extensionRunner.setUIProvider(provider);
 	}
 
 	/**
