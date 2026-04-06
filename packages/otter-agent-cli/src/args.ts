@@ -5,8 +5,9 @@ const THINKING_LEVELS: ThinkingLevel[] = ["off", "minimal", "low", "medium", "hi
 
 export interface ParsedArgs {
 	mode: "rpc";
-	provider: string | undefined;
-	model: string | undefined;
+	provider: string;
+	model: string;
+	apiKey: string | undefined;
 	thinking: ThinkingLevel | undefined;
 	systemPrompt: string | undefined;
 	cwd: string | undefined;
@@ -19,8 +20,9 @@ Usage: otter [options]
 
 Options:
   --mode <mode>           Operation mode. Currently only "rpc" is supported.
-  --provider <name>       LLM provider (e.g. anthropic, openai, google).
-  --model <id>            Model ID (e.g. claude-sonnet-4-5-20250514).
+  --provider <name>       LLM provider (e.g. anthropic, openai, google). Required.
+  --model <id>            Model ID (e.g. claude-sonnet-4-5-20250514). Required.
+  --api-key <key>         API key for the provider. Overrides the environment variable.
   --thinking <level>      Thinking level: off, minimal, low, medium, high, xhigh.
   --system-prompt <text>  Base system prompt.
   --cwd <path>            Working directory for the agent environment.
@@ -35,6 +37,7 @@ export function parseCliArgs(argv: string[]): ParsedArgs {
 			mode: { type: "string" },
 			provider: { type: "string" },
 			model: { type: "string" },
+			"api-key": { type: "string" },
 			thinking: { type: "string" },
 			"system-prompt": { type: "string" },
 			cwd: { type: "string" },
@@ -60,15 +63,51 @@ export function parseCliArgs(argv: string[]): ParsedArgs {
 		thinking = values.thinking as ThinkingLevel;
 	}
 
+	const help = (values.help as boolean | undefined) ?? false;
+	const version = (values.version as boolean | undefined) ?? false;
+
+	// --help and --version short-circuit without requiring --provider/--model.
+	if (help || version) {
+		return {
+			mode: "rpc",
+			provider: "",
+			model: "",
+			apiKey: undefined,
+			thinking,
+			systemPrompt: values["system-prompt"] as string | undefined,
+			cwd: values.cwd as string | undefined,
+			help,
+			version,
+		};
+	}
+
+	const provider = values.provider as string | undefined;
+	const model = values.model as string | undefined;
+
+	if (!provider) {
+		console.error("Error: --provider is required.");
+		console.error(
+			"Use --provider <name> to specify the LLM provider (e.g. anthropic, openai, google).",
+		);
+		process.exit(1);
+	}
+
+	if (!model) {
+		console.error("Error: --model is required.");
+		console.error("Use --model <id> to specify the model ID (e.g. claude-sonnet-4-5-20250514).");
+		process.exit(1);
+	}
+
 	return {
 		mode: "rpc",
-		provider: values.provider as string | undefined,
-		model: values.model as string | undefined,
+		provider,
+		model,
+		apiKey: values["api-key"] as string | undefined,
 		thinking,
 		systemPrompt: values["system-prompt"] as string | undefined,
 		cwd: values.cwd as string | undefined,
-		help: (values.help as boolean | undefined) ?? false,
-		version: (values.version as boolean | undefined) ?? false,
+		help: false,
+		version: false,
 	};
 }
 

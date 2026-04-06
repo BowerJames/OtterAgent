@@ -1,68 +1,24 @@
-import {
-	AgentEnvironment,
-	type AuthStorage,
-	ModelRegistry,
-	createInMemoryAuthStorage,
-} from "@otter-agent/core";
+import { AgentEnvironment, type AuthStorage, ModelRegistry } from "@otter-agent/core";
 import { parseCliArgs, printHelp } from "./args.js";
+import { buildAuthStorageFromEnv } from "./auth.js";
 import { runRpcMode } from "./rpc/rpc-mode.js";
 
 const VERSION = "0.0.1";
 
 /**
- * Standard environment variable names for LLM provider API keys.
- * Keyed by provider identifier as used in pi-ai/ModelRegistry.
- */
-const PROVIDER_ENV_VARS: Record<string, string> = {
-	anthropic: "ANTHROPIC_API_KEY",
-	openai: "OPENAI_API_KEY",
-	google: "GEMINI_API_KEY",
-	deepseek: "DEEPSEEK_API_KEY",
-	mistral: "MISTRAL_API_KEY",
-	xai: "XAI_API_KEY",
-	openrouter: "OPENROUTER_API_KEY",
-};
-
-/**
- * Build an InMemoryAuthStorage seeded from standard environment variables.
- */
-function buildAuthStorageFromEnv() {
-	const keys: Record<string, string> = {};
-	for (const [provider, envVar] of Object.entries(PROVIDER_ENV_VARS)) {
-		const value = process.env[envVar];
-		if (value) {
-			keys[provider] = value;
-		}
-	}
-	return createInMemoryAuthStorage(keys);
-}
-
-/**
  * Resolve a Model<Api> from CLI --provider and --model flags.
  *
  * Exits the process with an error message if the combination is invalid.
- * Returns undefined when neither flag is provided (session will be modelless).
  */
-function resolveModelFromArgs(
-	provider: string | undefined,
-	modelId: string | undefined,
-	authStorage: AuthStorage,
-) {
-	if (provider && modelId) {
-		const registry = new ModelRegistry(authStorage);
-		const model = registry.find(provider, modelId);
-		if (!model) {
-			console.error(`Error: model "${provider}/${modelId}" not found.`);
-			console.error("Check --provider and --model values, or omit them to use the default.");
-			process.exit(1);
-		}
-		return model;
-	}
-	if (provider || modelId) {
-		console.error("Error: --provider and --model must be specified together.");
+function resolveModelFromArgs(provider: string, modelId: string, authStorage: AuthStorage) {
+	const registry = new ModelRegistry(authStorage);
+	const model = registry.find(provider, modelId);
+	if (!model) {
+		console.error(`Error: model "${provider}/${modelId}" not found.`);
+		console.error("Check --provider and --model values.");
 		process.exit(1);
 	}
-	return undefined;
+	return model;
 }
 
 export async function main(argv: string[]): Promise<void> {
@@ -78,7 +34,9 @@ export async function main(argv: string[]): Promise<void> {
 		process.exit(0);
 	}
 
-	const authStorage = buildAuthStorageFromEnv();
+	const apiKeyOverride = args.apiKey ? { provider: args.provider, apiKey: args.apiKey } : undefined;
+
+	const authStorage = buildAuthStorageFromEnv(apiKeyOverride);
 
 	// Resolve the model from CLI flags before creating the session.
 	// We need a temporary ModelRegistry here because createRpcSession requires a
