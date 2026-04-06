@@ -54,9 +54,9 @@ export default function modeExtension(pi: ExtensionAPI): void {
 		}
 	}
 
-	function setMode(mode: string | null, state: Record<string, unknown> | undefined, ctx: ExtensionContext): void {
-		// Toggle off if same mode already active
-		if (mode !== null && activeMode === mode) {
+	function setMode(mode: string | null, state: Record<string, unknown> | undefined, ctx: ExtensionContext, force = false): void {
+		// Toggle off if same mode already active (unless forced)
+		if (!force && mode !== null && activeMode === mode) {
 			mode = null;
 			state = undefined;
 		}
@@ -132,9 +132,9 @@ export default function modeExtension(pi: ExtensionAPI): void {
 					ctx.ui.notify('Usage: /develop new <description>', "error");
 					return;
 				}
-				setMode("develop", { description }, ctx);
+				setMode("develop", { description }, ctx, true);
 			} else if (/^\d+$/.test(trimmed)) {
-				setMode("develop", { issueNumber: Number.parseInt(trimmed, 10) }, ctx);
+				setMode("develop", { issueNumber: Number.parseInt(trimmed, 10) }, ctx, true);
 			} else if (trimmed) {
 				ctx.ui.notify('Usage: /develop [ <issue-number> | new <description> ]', "error");
 				return;
