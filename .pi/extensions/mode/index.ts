@@ -132,9 +132,7 @@ export default function modeExtension(pi: ExtensionAPI): void {
 
 		if (activeMode) {
 			const label =
-				activeMode === "develop"
-					? buildDevelopLabel(modeState)
-					: MODES[activeMode].label;
+				activeMode === "develop" ? buildDevelopLabel(modeState) : MODES[activeMode].label;
 			ctx.ui.notify(`Mode: ${label}`, "info");
 
 			// Send one-time activation message
@@ -225,14 +223,14 @@ export default function modeExtension(pi: ExtensionAPI): void {
 			if (trimmed.startsWith("new ")) {
 				const description = trimmed.slice(4).trim();
 				if (!description) {
-					ctx.ui.notify('Usage: /develop new <description>', "error");
+					ctx.ui.notify("Usage: /develop new <description>", "error");
 					return;
 				}
 				await setMode("develop", { description }, ctx, true);
 			} else if (/^\d+$/.test(trimmed)) {
 				await setMode("develop", { issueNumber: Number.parseInt(trimmed, 10) }, ctx, true);
 			} else if (trimmed) {
-				ctx.ui.notify('Usage: /develop [ <issue-number> | new <description> ]', "error");
+				ctx.ui.notify("Usage: /develop [ <issue-number> | new <description> ]", "error");
 				return;
 			} else {
 				// /develop with no args while not active — activate with no state

@@ -2,9 +2,7 @@ import {
 	AgentEnvironment,
 	type AuthStorage,
 	ModelRegistry,
-	createAgentSession,
 	createInMemoryAuthStorage,
-	createInMemorySessionManager,
 } from "@otter-agent/core";
 import { parseCliArgs, printHelp } from "./args.js";
 import { runRpcMode } from "./rpc/rpc-mode.js";
@@ -83,25 +81,21 @@ export async function main(argv: string[]): Promise<void> {
 	const authStorage = buildAuthStorageFromEnv();
 
 	// Resolve the model from CLI flags before creating the session.
-	// We need a temporary ModelRegistry here because createAgentSession requires a
-	// resolved Model<Api> object, not raw provider/modelId strings. createAgentSession
+	// We need a temporary ModelRegistry here because createRpcSession requires a
+	// resolved Model<Api> object, not raw provider/modelId strings. createRpcSession
 	// constructs its own registry internally for session-context resolution — this one
 	// is only used for early CLI validation.
 	const model = resolveModelFromArgs(args.provider, args.model, authStorage);
 
-	const sessionManager = createInMemorySessionManager();
 	const environment = AgentEnvironment.justBash({
 		cwd: args.cwd ?? process.cwd(),
 	});
 
-	const { session } = await createAgentSession({
-		sessionManager,
+	await runRpcMode({
 		authStorage,
 		environment,
 		systemPrompt: args.systemPrompt ?? "You are a helpful AI assistant.",
 		model,
 		thinkingLevel: args.thinking,
 	});
-
-	await runRpcMode(session);
 }

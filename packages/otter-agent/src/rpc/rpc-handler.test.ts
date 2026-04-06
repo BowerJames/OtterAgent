@@ -3,7 +3,9 @@ import type { AgentEnvironment } from "../interfaces/agent-environment.js";
 import type { AuthStorage } from "../interfaces/auth-storage.js";
 import type { SessionManager } from "../interfaces/session-manager.js";
 import { AgentSession } from "../session/agent-session.js";
+import { createRpcUIProvider } from "../ui-providers/rpc-ui-provider.js";
 import { RpcHandler } from "./rpc-handler.js";
+import type { ExtensionUIResponse } from "./types.js";
 import type {
 	RpcAgentEvent,
 	RpcInboundMessage,
@@ -65,15 +67,29 @@ function createMockTransport(): MockTransport {
 	return transport;
 }
 
+/**
+ * Create a test setup with RpcHandler wired to a session and transport.
+ *
+ * Uses createRpcUIProvider externally (matching the pattern used by
+ * createRpcSession) and injects the resolve/reject callbacks into
+ * RpcHandler options.
+ */
 function createTestSetup() {
 	const transport = createMockTransport();
+	const { uiProvider, resolveResponse, rejectAll } = createRpcUIProvider(transport);
 	const session = new AgentSession({
 		sessionManager: createMockSessionManager(),
 		authStorage: createMockAuthStorage(),
 		environment: createMockEnvironment(),
 		systemPrompt: "Test prompt",
+		uiProvider,
 	});
-	const handler = new RpcHandler({ session, transport });
+	const handler = new RpcHandler({
+		session,
+		transport,
+		resolveUIResponse: resolveResponse,
+		rejectAllUI: rejectAll,
+	});
 	handler.start();
 	return { transport, session, handler };
 }
@@ -199,26 +215,63 @@ describe("RpcHandler", () => {
 		handler.stop();
 	});
 
-	test("routes extension_ui_response to UIProvider", async () => {
-		const { transport, handler } = createTestSetup();
+	test("routes extension_ui_response to resolveUIResponse callback", async () => {
+		const resolveUIResponse = mock((_response: ExtensionUIResponse) => {});
+		const rejectAllUI = mock((_reason: string) => {});
+		const transport = createMockTransport();
+		const session = new AgentSession({
+			sessionManager: createMockSessionManager(),
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Test",
+		});
 
-		// The handler should route this without error — no pending request to resolve,
-		// but it shouldn't throw either
+		const handler = new RpcHandler({
+			session,
+			transport,
+			resolveUIResponse,
+			rejectAllUI,
+		});
+		handler.start();
+
 		transport.inject({
 			type: "extension_ui_response",
-			id: "unknown-uuid",
+			id: "some-uuid",
 			confirmed: true,
 		});
 
-		// No crash means success
+		expect(resolveUIResponse).toHaveBeenCalledTimes(1);
+		expect(resolveUIResponse).toHaveBeenCalledWith(
+			expect.objectContaining({ type: "extension_ui_response", id: "some-uuid" }),
+		);
+
 		handler.stop();
 	});
 
-	test("stop closes transport and cleans up", async () => {
-		const { transport, handler } = createTestSetup();
+	test("stop calls rejectAllUI callback", async () => {
+		const rejectAllUI = mock((_reason: string) => {});
+		const resolveUIResponse = mock((_response: ExtensionUIResponse) => {});
+		const transport = createMockTransport();
+		const { uiProvider } = createRpcUIProvider(transport);
+		const session = new AgentSession({
+			sessionManager: createMockSessionManager(),
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Test",
+			uiProvider,
+		});
+
+		const handler = new RpcHandler({
+			session,
+			transport,
+			resolveUIResponse,
+			rejectAllUI,
+		});
 
 		handler.stop();
 
+		expect(rejectAllUI).toHaveBeenCalledTimes(1);
+		expect(rejectAllUI).toHaveBeenCalledWith("RPC handler stopped");
 		expect(transport.close).toHaveBeenCalled();
 	});
 
@@ -285,11 +338,13 @@ describe("RpcHandler", () => {
 	test("dispatches unknown command type to extension commands", async () => {
 		const commandHandler = mock(async () => {});
 		const transport = createMockTransport();
+		const { uiProvider, resolveResponse, rejectAll } = createRpcUIProvider(transport);
 		const session = new AgentSession({
 			sessionManager: createMockSessionManager(),
 			authStorage: createMockAuthStorage(),
 			environment: createMockEnvironment(),
 			systemPrompt: "Test",
+			uiProvider,
 		});
 
 		await session.loadExtensions([
@@ -301,7 +356,12 @@ describe("RpcHandler", () => {
 			},
 		]);
 
-		const handler = new RpcHandler({ session, transport });
+		const handler = new RpcHandler({
+			session,
+			transport,
+			resolveUIResponse: resolveResponse,
+			rejectAllUI: rejectAll,
+		});
 		handler.start();
 
 		// Send an unknown command type that matches an extension command
@@ -370,165 +430,6 @@ describe("RpcHandler", () => {
 		expect(responses).toHaveLength(1);
 		expect(responses[0].success).toBe(false);
 		expect(responses[0].error).toContain("Missing required field");
-
-		handler.stop();
-	});
-});
-
-describe("RpcHandler UIProvider", () => {
-	test("uiProvider is available on handler", () => {
-		const transport = createMockTransport();
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Test",
-		});
-		const handler = new RpcHandler({ session, transport });
-
-		expect(handler.uiProvider).toBeDefined();
-		expect(handler.uiProvider.dialog).toBeFunction();
-		expect(handler.uiProvider.confirm).toBeFunction();
-		expect(handler.uiProvider.input).toBeFunction();
-		expect(handler.uiProvider.select).toBeFunction();
-		expect(handler.uiProvider.notify).toBeFunction();
-	});
-
-	test("notify sends fire-and-forget request", () => {
-		const transport = createMockTransport();
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Test",
-		});
-		const handler = new RpcHandler({ session, transport });
-
-		handler.uiProvider.notify("Hello", "info");
-
-		const requests = transport.sent.filter((m) => m.type === "extension_ui_request");
-		expect(requests).toHaveLength(1);
-
-		const req = requests[0] as { method: string; message: string };
-		expect(req.method).toBe("notify");
-		expect(req.message).toBe("Hello");
-	});
-
-	test("confirm sends request and resolves on response", async () => {
-		const transport = createMockTransport();
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Test",
-		});
-		const handler = new RpcHandler({ session, transport });
-		handler.start();
-
-		const confirmPromise = handler.uiProvider.confirm("Title", "Are you sure?");
-
-		// Find the emitted request
-		const requests = transport.sent.filter((m) => m.type === "extension_ui_request");
-		expect(requests).toHaveLength(1);
-
-		const req = requests[0] as { id: string; method: string };
-		expect(req.method).toBe("confirm");
-
-		// Simulate client responding
-		transport.inject({
-			type: "extension_ui_response",
-			id: req.id,
-			confirmed: true,
-		});
-
-		const result = await confirmPromise;
-		expect(result).toBe(true);
-
-		handler.stop();
-	});
-
-	test("input sends request and resolves with value", async () => {
-		const transport = createMockTransport();
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Test",
-		});
-		const handler = new RpcHandler({ session, transport });
-		handler.start();
-
-		const inputPromise = handler.uiProvider.input("Name?", "placeholder");
-
-		const requests = transport.sent.filter((m) => m.type === "extension_ui_request");
-		const req = requests[0] as { id: string };
-
-		transport.inject({
-			type: "extension_ui_response",
-			id: req.id,
-			value: "Alice",
-		});
-
-		const result = await inputPromise;
-		expect(result).toBe("Alice");
-
-		handler.stop();
-	});
-
-	test("select resolves with item at index", async () => {
-		const transport = createMockTransport();
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Test",
-		});
-		const handler = new RpcHandler({ session, transport });
-		handler.start();
-
-		const items = [{ name: "a" }, { name: "b" }, { name: "c" }];
-		const selectPromise = handler.uiProvider.select("Pick one", items);
-
-		const requests = transport.sent.filter((m) => m.type === "extension_ui_request");
-		const req = requests[0] as { id: string };
-
-		// Client returns index "1" to pick second item
-		transport.inject({
-			type: "extension_ui_response",
-			id: req.id,
-			value: "1",
-		});
-
-		const result = await selectPromise;
-		expect(result).toEqual({ name: "b" });
-
-		handler.stop();
-	});
-
-	test("select resolves undefined on cancel", async () => {
-		const transport = createMockTransport();
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Test",
-		});
-		const handler = new RpcHandler({ session, transport });
-		handler.start();
-
-		const selectPromise = handler.uiProvider.select("Pick one", ["a", "b"]);
-
-		const requests = transport.sent.filter((m) => m.type === "extension_ui_request");
-		const req = requests[0] as { id: string };
-
-		transport.inject({
-			type: "extension_ui_response",
-			id: req.id,
-			cancelled: true,
-		});
-
-		const result = await selectPromise;
-		expect(result).toBeUndefined();
 
 		handler.stop();
 	});
