@@ -10,6 +10,7 @@ export type {
 	RpcCommandType,
 	SetModelCommand,
 	SetThinkingLevelCommand,
+	ShutdownCommand,
 	SteerCommand,
 	// Responses
 	RpcErrorResponse,

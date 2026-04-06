@@ -74,6 +74,12 @@ export interface GetCommandsCommand {
 	id?: string;
 }
 
+/** Lifecycle commands. */
+export interface ShutdownCommand {
+	type: "shutdown";
+	id?: string;
+}
+
 /** Union of all RPC commands. */
 export type RpcCommand =
 	| PromptCommand
@@ -84,7 +90,8 @@ export type RpcCommand =
 	| SetThinkingLevelCommand
 	| CompactCommand
 	| GetStateCommand
-	| GetCommandsCommand;
+	| GetCommandsCommand
+	| ShutdownCommand;
 
 /** String literal union of all command types. */
 export type RpcCommandType = RpcCommand["type"];

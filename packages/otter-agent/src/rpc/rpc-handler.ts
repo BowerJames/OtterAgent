@@ -7,7 +7,7 @@
  * - All other commands are awaited before responding
  * - Events are forwarded 1:1 from session to transport
  * - Extension UI responses are routed to the RPC UIProvider
- * - Shutdown is deferred (flag checked after each command)
+ * - Shutdown triggers a graceful sequence: abort → waitForIdle → dispose → stop
  */
 import type { AgentSession, AgentSessionEvent } from "../session/agent-session.js";
 import type {
@@ -20,6 +20,9 @@ import type {
 	RpcTransport,
 } from "./types.js";
 
+/** Maximum time to wait for the agent to settle during graceful shutdown (ms). */
+const GRACEFUL_SHUTDOWN_TIMEOUT_MS = 120_000;
+
 export interface RpcHandlerOptions {
 	session: AgentSession;
 	transport: RpcTransport;
@@ -27,6 +30,8 @@ export interface RpcHandlerOptions {
 	resolveUIResponse: (response: ExtensionUIResponse) => void;
 	/** Rejects all pending extension UI requests (used during shutdown). */
 	rejectAllUI: (reason: string) => void;
+	/** Called when graceful shutdown completes (after abort → idle → dispose → stop). */
+	onShutdown?: () => void;
 }
 
 export class RpcHandler {
@@ -34,8 +39,14 @@ export class RpcHandler {
 	private readonly _transport: RpcTransport;
 	private readonly _resolveUIResponse: (response: ExtensionUIResponse) => void;
 	private readonly _rejectAllUI: (reason: string) => void;
+	private readonly _onShutdown?: () => void;
 	private _unsubscribeSession: (() => void) | undefined;
 	private _shutdownRequested = false;
+	private _shutdownInProgress = false;
+	private _resolveShutdown: (() => void) | undefined;
+	private _shutdownPromise: Promise<void> | undefined;
+	private _shutdownTimer: ReturnType<typeof setTimeout> | undefined;
+	private _waitForIdleTimer: ReturnType<typeof setTimeout> | undefined;
 	private _lastState: RpcSessionState | undefined;
 
 	constructor(options: RpcHandlerOptions) {
@@ -43,6 +54,7 @@ export class RpcHandler {
 		this._transport = options.transport;
 		this._resolveUIResponse = options.resolveUIResponse;
 		this._rejectAllUI = options.rejectAllUI;
+		this._onShutdown = options.onShutdown;
 	}
 
 	/** Start listening for commands and forwarding events. */
@@ -209,6 +221,14 @@ export class RpcHandler {
 				break;
 			}
 
+			case "shutdown": {
+				this.requestShutdown();
+				// Wait for the graceful shutdown sequence to complete before responding.
+				await this._shutdownPromise;
+				this._send(this._success(command.id, "shutdown"));
+				break;
+			}
+
 			default: {
 				// Try extension command registry before returning error
 				await this._tryExtensionCommand(command);
@@ -236,15 +256,99 @@ export class RpcHandler {
 
 	// ─── Shutdown ────────────────────────────────────────────────────
 
-	/** Request deferred shutdown (checked after each command). */
+	/** Request graceful shutdown (abort → idle → dispose → stop). */
 	requestShutdown(): void {
+		if (this._shutdownRequested) return;
 		this._shutdownRequested = true;
+		this._shutdownPromise = new Promise<void>((resolve) => {
+			this._resolveShutdown = resolve;
+		});
+		this._shutdownTimer = setTimeout(() => this._onShutdownTimeout(), GRACEFUL_SHUTDOWN_TIMEOUT_MS);
+		this._checkShutdown();
+	}
+
+	private _onShutdownTimeout(): void {
+		// If shutdown is still in progress after the timeout, force cleanup.
+		// This should not normally happen since _performGracefulShutdown has
+		// its own per-step timeout, but serves as a last-resort safety net.
+		if (this._shutdownInProgress) {
+			this.stop();
+			this._onShutdown?.();
+			this._resolveShutdown?.();
+		}
 	}
 
 	private _checkShutdown(): void {
-		if (this._shutdownRequested) {
-			this.stop();
+		if (this._shutdownRequested && !this._shutdownInProgress) {
+			this._shutdownInProgress = true;
+			this._performGracefulShutdown().catch(() => {
+				// If graceful shutdown fails (e.g., waitForIdle rejects),
+				// force cleanup anyway.
+				clearTimeout(this._waitForIdleTimer);
+				clearTimeout(this._shutdownTimer);
+				this.stop();
+				this._onShutdown?.();
+				this._resolveShutdown?.();
+			});
 		}
+	}
+
+	/**
+	 * Perform the graceful shutdown sequence:
+	 * 1. Abort any in-flight agent turn
+	 * 2. Wait for the agent to settle (with timeout safety net)
+	 * 3. Dispose the session (fires session_shutdown event for extensions)
+	 * 4. Resolve the shutdown promise (unblocks awaiting command handler)
+	 * 5. Clean up transport and reject pending UI (after response is sent)
+	 * 6. Notify the caller (may trigger process.exit in CLI mode)
+	 */
+	private async _performGracefulShutdown(): Promise<void> {
+		// 1. Abort any in-flight agent turn
+		if (this._session.agent.state.isStreaming) {
+			this._session.abort();
+		}
+
+		// 2. Wait for the agent to settle (with timeout safety net)
+		const idlePromise = this._session.waitForIdle().then(
+			() => {
+				clearTimeout(this._waitForIdleTimer);
+				this._waitForIdleTimer = undefined;
+			},
+			() => {
+				clearTimeout(this._waitForIdleTimer);
+				this._waitForIdleTimer = undefined;
+			},
+		);
+		const timeoutPromise = new Promise<void>((_, reject) => {
+			this._waitForIdleTimer = setTimeout(
+				() => reject(new Error("Graceful shutdown timed out")),
+				GRACEFUL_SHUTDOWN_TIMEOUT_MS,
+			);
+		});
+		await Promise.race([idlePromise, timeoutPromise]).catch(() => {
+			// Timeout or error — proceed with cleanup anyway
+		});
+
+		// 3. Dispose the session (fires session_shutdown event for extensions)
+		await this._session.dispose();
+
+		// 4. Clear timers and resolve the shutdown promise so the awaiting
+		//    command handler can send its response.
+		clearTimeout(this._shutdownTimer);
+		this._shutdownTimer = undefined;
+		clearTimeout(this._waitForIdleTimer);
+		this._waitForIdleTimer = undefined;
+		this._resolveShutdown?.();
+
+		// 5. Wait a microtask tick so the command handler can send the
+		//    shutdown response before we close the transport.
+		await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+		// 6. Clean up transport and reject pending UI
+		this.stop();
+
+		// 7. Notify the caller (may trigger process.exit in CLI mode)
+		this._onShutdown?.();
 	}
 
 	// ─── State Change Detection ─────────────────────────────────────

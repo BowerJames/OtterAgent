@@ -224,4 +224,22 @@ describe("createRpcSession", () => {
 
 		expect(session.sessionManager).toBe(sessionManager);
 	});
+
+	test("onShutdown is threaded through to handler", async () => {
+		const transport = createMockTransport();
+		const onShutdown = mock(() => {});
+
+		const { handler } = await createRpcSession({
+			transport,
+			environment: createMockEnvironment(),
+			systemPrompt: "Test prompt",
+			onShutdown,
+		});
+
+		handler.start();
+		handler.requestShutdown();
+		await new Promise((r) => setTimeout(r, 50));
+
+		expect(onShutdown).toHaveBeenCalledTimes(1);
+	});
 });
