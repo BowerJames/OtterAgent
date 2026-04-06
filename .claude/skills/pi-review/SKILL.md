@@ -8,22 +8,20 @@ Run an independent code review of the current implementation using the pi-coding
 
 ## What to do
 
-1. Gather context:
-   - Read the relevant GitHub issue (if an issue number was given in $ARGUMENTS): `gh issue view $ARGUMENTS --repo BowerJames/OtterAgent --json title,body`
-   - Identify the files changed in the most recent commit(s): `git diff HEAD~1..HEAD --name-only`
+1. Identify the issue number:
+   - If `$ARGUMENTS` is a number, use it directly as the issue number.
+   - If `$ARGUMENTS` is a description, find the matching issue: `gh issue list --repo BowerJames/OtterAgent --search "$ARGUMENTS" --json number,title --limit 5`
 
-2. Build a review prompt that includes:
-   - A summary of the issue or change being reviewed
-   - The specific implementation checklist (what was changed and why)
-   - Instructions to run lint, tests, and build
-   - A request to report all findings in full
+2. Identify the files changed in the most recent commit(s): `git diff HEAD~1..HEAD --name-only`
 
-3. Call the pi-coding-agent:
+3. Build a review prompt (see structure below). The prompt must **include the issue number** so pi can look it up itself — do NOT embed the issue contents in the prompt.
+
+4. Call the pi-coding-agent:
    ```
    pi --model glm-5-turbo -p "<your prompt>"
    ```
 
-4. Report the full output of the review back to the user, then ask how to proceed.
+5. Report the full output of the review back to the user, then ask how to proceed.
 
 ## Review prompt structure
 
@@ -31,27 +29,44 @@ Use this structure for the prompt passed to pi:
 
 ```
 You are doing an independent code review of a recently committed implementation
-for [issue/change description] in the OtterAgent project (located at /root/Projects/OtterAgent).
+for issue #<ISSUE_NUMBER> in the OtterAgent project (located at /root/Projects/OtterAgent).
 
-## Background
-[Summarise the problem that was solved and the approach taken]
+## Step 0 — Read the GitHub issue
 
-## Implementation checklist
-[List each specific thing that should have been done, so the reviewer can verify each one]
+Start by reading the full GitHub issue using the gh CLI. You MUST do this before anything else:
 
-## Your tasks
+1. **Title and description**: `gh issue view <ISSUE_NUMBER> --repo BowerJames/OtterAgent --json title,body`
+2. **Comments**: `gh issue view <ISSUE_NUMBER> --repo BowerJames/OtterAgent --comments`
 
-1. **Accuracy & Completeness**: Verify each item in the implementation checklist above.
+Use the title, description, and all comments to fully understand the requirements, context, and any prior discussion before reviewing the code.
 
-2. **Code Quality**: Run the linter and report any issues:
-   - Run: cd /root/Projects/OtterAgent && bun run lint
+## Step 1 — Accuracy & Completeness
 
-3. **Tests**: Run the full test suite and report results:
-   - Run: cd /root/Projects/OtterAgent && bun run test
-   - Assess whether the test coverage is appropriate for the change
+Verify that the implementation addresses every requirement mentioned in the issue and its comments.
 
-4. **Build**: Verify the project builds cleanly:
-   - Run: cd /root/Projects/OtterAgent && bun run build
+## Step 2 — Code Quality
+
+Run the linter and report any issues:
+- Run: cd /root/Projects/OtterAgent && bun run lint
+
+## Step 3 — Tests
+
+Run the full test suite and report results:
+- Run: cd /root/Projects/OtterAgent && bun run test
+- Assess whether the test coverage is appropriate for the change
+
+## Step 4 — Build
+
+Verify the project builds cleanly:
+- Run: cd /root/Projects/OtterAgent && bun run build
+
+## Step 5 — Post review as a GitHub comment
+
+Before you finish, post your complete review as a comment on the GitHub issue:
+
+- Run: `gh issue comment <ISSUE_NUMBER> --repo BowerJames/OtterAgent --body "<your full review>"`
+
+The comment should include all your findings — issues, gaps, concerns, and anything that looks correct.
 
 Report all findings in full — any issues, gaps, or concerns, as well as confirmation of anything that looks correct.
 ```
