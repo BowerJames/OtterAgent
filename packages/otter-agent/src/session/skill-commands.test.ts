@@ -1,10 +1,8 @@
 /**
- * Tests for AgentSession skill command registration and buildSkillInvocationXml.
+ * Tests for AgentSession skill command registration and skill invocation XML.
  */
 import { describe, expect, test } from "bun:test";
 import { mock } from "bun:test";
-import type { AgentMessage } from "@mariozechner/pi-agent-core";
-import type { ExtensionContext } from "../extensions/context.js";
 import type { Extension } from "../extensions/extension.js";
 import type { AgentEnvironment } from "../interfaces/agent-environment.js";
 import type { AuthStorage } from "../interfaces/auth-storage.js";
@@ -12,7 +10,8 @@ import type { SessionManager } from "../interfaces/session-manager.js";
 import type { SkillDefinition } from "../interfaces/skill-definition.js";
 import { isSkillSupportedAgentEnvironment } from "../interfaces/skill-supported-agent-environment.js";
 import type { SkillSupportedAgentEnvironment } from "../interfaces/skill-supported-agent-environment.js";
-import { AgentSession, buildSkillInvocationXml } from "./agent-session.js";
+import { AgentSession } from "./agent-session.js";
+import { buildSkillInvocationXml } from "./skill-invocation.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

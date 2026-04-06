@@ -4,6 +4,7 @@ import type { AgentEnvironment } from "../../interfaces/agent-environment.js";
 import type { SkillDefinition } from "../../interfaces/skill-definition.js";
 import type { SkillSupportedAgentEnvironment } from "../../interfaces/skill-supported-agent-environment.js";
 import type { ToolDefinition } from "../../interfaces/tool-definition.js";
+import { escapeXml } from "../../utils/xml.js";
 import { createBashToolDefinition } from "./tools/bash.js";
 import { createEditToolDefinition } from "./tools/edit.js";
 import { createReadToolDefinition } from "./tools/read.js";
@@ -56,16 +57,6 @@ function isValidSkillName(name: string): boolean {
 	if (!VALID_SKILL_NAME.test(name)) return false;
 	if (name.includes("--")) return false;
 	return true;
-}
-
-/** Escape characters that are special in XML/HTML text content and attributes. */
-function escapeXml(str: string): string {
-	return str
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;")
-		.replace(/"/g, "&quot;")
-		.replace(/'/g, "&apos;");
 }
 
 /** Build the full SKILL.md file content (YAML frontmatter + body). */
@@ -150,9 +141,8 @@ export class JustBashAgentEnvironment implements AgentEnvironment, SkillSupporte
 		const filePath = this._skillFilePath(skill.name);
 		const fileContent = buildSkillFileContent(skill);
 
-		// Write synchronously into the just-bash virtual filesystem.
-		// writeFile is async, but we fire-and-forget here so the file is available
-		// by the time the agent's read tool is called (all tool calls are async).
+		// Fire-and-forget: writeFile is async but completes well before the agent
+		// can issue a read tool call, so the file is available when needed.
 		this._bash.writeFile(filePath, fileContent).catch((err: unknown) => {
 			console.warn(
 				`[JustBashAgentEnvironment] Failed to write virtual file for skill "${skill.name}": ${err}`,
