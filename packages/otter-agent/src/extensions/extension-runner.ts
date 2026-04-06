@@ -10,8 +10,8 @@ import type { AgentEnvironment } from "../interfaces/agent-environment.js";
 import type { EntryId, ReadonlySessionManager } from "../interfaces/session-manager.js";
 import type { ToolDefinition } from "../interfaces/tool-definition.js";
 import type { UIProvider } from "../interfaces/ui-provider.js";
-import { noOpUIProvider } from "../interfaces/ui.js";
 import type { ModelRegistry } from "../session/model-registry.js";
+import { createNoOpUIProvider } from "../ui-providers/no-op-ui-provider.js";
 import type { CommandInfo, CommandOptions } from "./commands.js";
 import type { CompactOptions, ExtensionCommandContext, ExtensionContext } from "./context.js";
 import { createEventBus } from "./event-bus-impl.js";
@@ -99,7 +99,7 @@ export class ExtensionRunner {
 
 	constructor() {
 		this._eventBus = createEventBus();
-		this._uiProvider = noOpUIProvider;
+		this._uiProvider = createNoOpUIProvider();
 	}
 
 	/** Bind the actions provided by AgentSession. Must be called before dispatching events. */
@@ -423,7 +423,6 @@ export class ExtensionRunner {
 		const actions = this._requireActions();
 		return {
 			ui: this._uiProvider,
-			hasUI: this._uiProvider !== noOpUIProvider,
 			sessionManager: actions.getSessionManager(),
 			agentEnvironment: actions.getAgentEnvironment(),
 			model: actions.getModel(),

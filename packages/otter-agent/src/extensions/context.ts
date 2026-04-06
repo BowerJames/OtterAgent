@@ -33,9 +33,6 @@ export interface ExtensionContext {
 	/** UI methods for user interaction. */
 	ui: UIProvider;
 
-	/** Whether a real UIProvider is available (false if using a stub). */
-	hasUI: boolean;
-
 	/** Session manager (read-only). */
 	sessionManager: ReadonlySessionManager;
 
