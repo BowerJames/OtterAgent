@@ -18,6 +18,8 @@ import type { Extension } from "../extensions/extension.js";
 import type { AgentEnvironment } from "../interfaces/agent-environment.js";
 import type { AuthStorage } from "../interfaces/auth-storage.js";
 import type { EntryId, SessionManager } from "../interfaces/session-manager.js";
+import type { SkillDefinition } from "../interfaces/skill-definition.js";
+import { isSkillSupportedAgentEnvironment } from "../interfaces/skill-supported-agent-environment.js";
 import type { ToolDefinition } from "../interfaces/tool-definition.js";
 import type { UIProvider } from "../interfaces/ui-provider.js";
 import { convertToLlm } from "./messages.js";
@@ -177,7 +179,7 @@ export class AgentSession {
 	private readonly _authStorage: AuthStorage;
 	private readonly _environment: AgentEnvironment;
 	private readonly _baseSystemPrompt: string;
-	private readonly _environmentAppend: string | undefined;
+	private _environmentAppend: string | undefined;
 	private readonly _eventListeners: Set<AgentSessionEventListener> = new Set();
 	private readonly _extensionRunner: ExtensionRunner;
 	private _unsubscribeAgent: () => void;
@@ -266,6 +268,9 @@ export class AgentSession {
 	/**
 	 * Load extensions and fire session_start.
 	 * Call this after construction to initialise extensions.
+	 *
+	 * After session_start fires (extensions may have registered skills on the
+	 * environment), the system prompt is rebuilt and skill commands are registered.
 	 */
 	async loadExtensions(extensions?: Extension[]): Promise<void> {
 		if (extensions) {
@@ -273,6 +278,12 @@ export class AgentSession {
 		}
 		await this._extensionRunner.loadExtensions(this._extensions);
 		await this._extensionRunner.emit({ type: "session_start" });
+
+		// Refresh the environment append now that extensions may have modified the
+		// environment (e.g. by registering skills on a SkillSupportedAgentEnvironment).
+		this._environmentAppend = this._environment.getSystemMessageAppend();
+		this._applyToolChanges();
+		this._registerSkillCommands();
 	}
 
 	/** Get the extension runner for direct access (commands, error listeners, etc). */
@@ -287,6 +298,11 @@ export class AgentSession {
 		this._extensionRunner.clear();
 		await this._extensionRunner.loadExtensions(this._extensions);
 		await this._extensionRunner.emit({ type: "session_start" });
+
+		// Refresh environment append and skill commands after reload.
+		this._environmentAppend = this._environment.getSystemMessageAppend();
+		this._applyToolChanges();
+		this._registerSkillCommands();
 	}
 
 	// ─── Core Interaction ─────────────────────────────────────────────
@@ -643,4 +659,63 @@ export class AgentSession {
 		this.agent.setTools(this._getActiveTools());
 		this.agent.setSystemPrompt(this._getCurrentSystemPrompt());
 	}
+
+	/**
+	 * Register commands for all skills on a SkillSupportedAgentEnvironment.
+	 *
+	 * Each skill gets two commands:
+	 * - `<name>` — bare form (skipped if an extension command already uses the name)
+	 * - `skill:<name>` — namespaced form (always available, never collides)
+	 *
+	 * Called after loadExtensions() and reload() so that skills registered
+	 * during session_start are available before the user types any input.
+	 */
+	private _registerSkillCommands(): void {
+		const env = this._environment;
+		if (!isSkillSupportedAgentEnvironment(env)) return;
+
+		for (const skill of env.getSkills()) {
+			const handler = async (args: string): Promise<void> => {
+				const filePath = env.getSkillFilePath(skill.name);
+				if (!filePath) return;
+
+				const xml = buildSkillInvocationXml(skill, filePath, args);
+				await this.prompt(xml);
+			};
+
+			const commandOptions = { description: skill.description, handler };
+
+			// Bare name: only if no extension command already owns it.
+			this._extensionRunner.registerCommand(skill.name, commandOptions);
+			// Namespaced form: always register.
+			this._extensionRunner.registerCommand(`skill:${skill.name}`, commandOptions);
+		}
+	}
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Build the XML block injected into the conversation when a skill is invoked.
+ * Follows the same format as pi-coding-agent's skill invocation messages.
+ */
+export function buildSkillInvocationXml(
+	skill: SkillDefinition,
+	filePath: string,
+	args: string,
+): string {
+	const skillDir = filePath.substring(0, filePath.lastIndexOf("/"));
+	const parts: string[] = [
+		`<skill name="${skill.name}" location="${filePath}">`,
+		`References are relative to ${skillDir}/.`,
+		"",
+		skill.content,
+		"</skill>",
+	];
+	const trimmedArgs = args.trim();
+	if (trimmedArgs) {
+		parts.push("");
+		parts.push(trimmedArgs);
+	}
+	return parts.join("\n");
 }

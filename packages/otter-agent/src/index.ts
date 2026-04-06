@@ -3,9 +3,12 @@ export type {
 	EntryId,
 	ReadonlySessionManager,
 	SessionContext,
+	SkillDefinition,
+	SkillSupportedAgentEnvironment,
 	ToolDefinition,
 	UIProvider,
 } from "./interfaces/index.js";
+export { isSkillSupportedAgentEnvironment } from "./interfaces/index.js";
 
 // Built-in AgentEnvironment implementations.
 // AgentEnvironment is exported as both a type (the interface) and a value
@@ -80,6 +83,7 @@ export { createEventBus, ExtensionRunner } from "./extensions/index.js";
 // AgentSession
 export {
 	AgentSession,
+	buildSkillInvocationXml,
 	buildSystemPrompt,
 	buildToolSection,
 	convertToLlm,

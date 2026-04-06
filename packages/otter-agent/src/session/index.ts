@@ -1,4 +1,4 @@
-export { AgentSession, createAgentSession } from "./agent-session.js";
+export { AgentSession, buildSkillInvocationXml, createAgentSession } from "./agent-session.js";
 export type {
 	AgentSessionEvent,
 	AgentSessionOptions,

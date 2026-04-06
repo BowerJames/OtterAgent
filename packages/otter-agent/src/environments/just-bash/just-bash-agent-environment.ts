@@ -1,6 +1,8 @@
 import { Bash } from "just-bash";
 import type { BashOptions, CommandName, InitialFiles, NetworkConfig } from "just-bash";
 import type { AgentEnvironment } from "../../interfaces/agent-environment.js";
+import type { SkillDefinition } from "../../interfaces/skill-definition.js";
+import type { SkillSupportedAgentEnvironment } from "../../interfaces/skill-supported-agent-environment.js";
 import type { ToolDefinition } from "../../interfaces/tool-definition.js";
 import { createBashToolDefinition } from "./tools/bash.js";
 import { createEditToolDefinition } from "./tools/edit.js";
@@ -39,6 +41,35 @@ export interface JustBashAgentEnvironmentOptions {
 	tools?: JustBashToolName[];
 }
 
+/** Pattern for valid skill names: lowercase a-z, 0-9, hyphens; max 64 chars. */
+const VALID_SKILL_NAME = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
+
+/**
+ * Returns `true` if the skill name meets the naming requirements:
+ * - Only lowercase a-z, 0-9, and hyphens
+ * - No leading or trailing hyphens
+ * - No consecutive hyphens
+ * - Between 1 and 64 characters
+ */
+function isValidSkillName(name: string): boolean {
+	if (name.length === 0 || name.length > 64) return false;
+	if (!VALID_SKILL_NAME.test(name)) return false;
+	if (name.includes("--")) return false;
+	return true;
+}
+
+/** Build the full SKILL.md file content (YAML frontmatter + body). */
+function buildSkillFileContent(skill: SkillDefinition): string {
+	return [
+		"---",
+		`name: ${skill.name}`,
+		`description: ${skill.description}`,
+		"---",
+		"",
+		skill.content,
+	].join("\n");
+}
+
 /**
  * A built-in {@link AgentEnvironment} backed by a sandboxed just-bash virtual
  * filesystem. Exposes the same four tools as pi-coding-agent:
@@ -46,11 +77,17 @@ export interface JustBashAgentEnvironmentOptions {
  *
  * The {@link Bash} instance is created once at construction time and shared
  * across all tool calls, so filesystem writes persist between calls.
+ *
+ * Implements {@link SkillSupportedAgentEnvironment}: skills registered via
+ * `addSkill()` are written as virtual `SKILL.md` files under
+ * `<cwd>/skills/<name>/SKILL.md` and their descriptions are included in the
+ * system prompt when the `read` tool is active.
  */
-export class JustBashAgentEnvironment implements AgentEnvironment {
+export class JustBashAgentEnvironment implements AgentEnvironment, SkillSupportedAgentEnvironment {
 	private readonly _bash: Bash;
 	private readonly _cwd: string;
 	private readonly _tools: ToolDefinition[];
+	private readonly _skills: Map<string, SkillDefinition> = new Map();
 
 	constructor(options: JustBashAgentEnvironmentOptions = {}) {
 		const cwd = options.cwd ?? "/";
@@ -75,6 +112,68 @@ export class JustBashAgentEnvironment implements AgentEnvironment {
 		const enabled = options.tools ?? (["bash", "read", "write", "edit"] as JustBashToolName[]);
 		this._tools = enabled.map((name) => allTools[name]);
 	}
+
+	// ─── SkillSupportedAgentEnvironment ──────────────────────────────────────────
+
+	/**
+	 * Register a skill with the environment.
+	 *
+	 * Validates the name, writes a virtual `SKILL.md` file at
+	 * `<cwd>/skills/<name>/SKILL.md`, and stores the definition.
+	 *
+	 * If the name is invalid, logs a warning and returns `false` without
+	 * throwing — the session is not affected.
+	 */
+	addSkill(skill: SkillDefinition): boolean {
+		if (!isValidSkillName(skill.name)) {
+			console.warn(
+				`[JustBashAgentEnvironment] Skill "${skill.name}" was not registered: name must be 1–64 characters, contain only lowercase a-z, 0-9, or hyphens, and must not start, end, or contain consecutive hyphens.`,
+			);
+			return false;
+		}
+
+		this._skills.set(skill.name, skill);
+
+		const filePath = this._skillFilePath(skill.name);
+		const fileContent = buildSkillFileContent(skill);
+
+		// Write synchronously into the just-bash virtual filesystem.
+		// writeFile is async, but we fire-and-forget here so the file is available
+		// by the time the agent's read tool is called (all tool calls are async).
+		this._bash.writeFile(filePath, fileContent).catch((err: unknown) => {
+			console.warn(
+				`[JustBashAgentEnvironment] Failed to write virtual file for skill "${skill.name}": ${err}`,
+			);
+		});
+
+		return true;
+	}
+
+	/** Return all registered skill definitions. */
+	getSkills(): SkillDefinition[] {
+		return [...this._skills.values()];
+	}
+
+	/**
+	 * Return the full content of the skill's virtual file (YAML frontmatter + body),
+	 * or `undefined` if no skill with that name is registered.
+	 */
+	getSkillContent(name: string): string | undefined {
+		const skill = this._skills.get(name);
+		if (!skill) return undefined;
+		return buildSkillFileContent(skill);
+	}
+
+	/**
+	 * Return the absolute virtual filesystem path to the skill's `SKILL.md` file,
+	 * or `undefined` if no skill with that name is registered.
+	 */
+	getSkillFilePath(name: string): string | undefined {
+		if (!this._skills.has(name)) return undefined;
+		return this._skillFilePath(name);
+	}
+
+	// ─── AgentEnvironment ─────────────────────────────────────────────────────────
 
 	getSystemMessageAppend(): string {
 		const commands = [
@@ -102,21 +201,69 @@ export class JustBashAgentEnvironment implements AgentEnvironment {
 			"yq",
 		].join(", ");
 
-		return [
-			"## Environment",
-			"",
-			"You are operating in a sandboxed virtual filesystem (just-bash). Key properties:",
-			"",
-			`- Working directory: \`${this._cwd}\``,
-			"- All file operations are in-memory — there is no real host filesystem access.",
-			"- No external binaries or processes can be spawned.",
-			"- Network access is disabled unless explicitly configured.",
-			`- Available shell commands include: ${commands}, and more.`,
-			"- Filesystem state (written files) persists across tool calls within this session.",
-		].join("\n");
+		const parts: string[] = [
+			[
+				"## Environment",
+				"",
+				"You are operating in a sandboxed virtual filesystem (just-bash). Key properties:",
+				"",
+				`- Working directory: \`${this._cwd}\``,
+				"- All file operations are in-memory — there is no real host filesystem access.",
+				"- No external binaries or processes can be spawned.",
+				"- Network access is disabled unless explicitly configured.",
+				`- Available shell commands include: ${commands}, and more.`,
+				"- Filesystem state (written files) persists across tool calls within this session.",
+			].join("\n"),
+		];
+
+		const skillsSection = this._buildSkillsSection();
+		if (skillsSection) {
+			parts.push(skillsSection);
+		}
+
+		return parts.join("\n\n");
 	}
 
 	getTools(): ToolDefinition[] {
 		return this._tools;
+	}
+
+	// ─── Internal ─────────────────────────────────────────────────────────────────
+
+	/** Build the skills section for the system prompt (only when read tool is active). */
+	private _buildSkillsSection(): string | undefined {
+		if (this._skills.size === 0) return undefined;
+		if (!this._tools.some((t) => t.name === "read")) return undefined;
+
+		const skillItems = [...this._skills.values()]
+			.map((skill) => {
+				const filePath = this._skillFilePath(skill.name);
+				return [
+					"  <skill>",
+					`    <name>${skill.name}</name>`,
+					`    <description>${skill.description}</description>`,
+					`    <location>${filePath}</location>`,
+					"  </skill>",
+				].join("\n");
+			})
+			.join("\n");
+
+		return [
+			"## Skills",
+			"",
+			"The following skills provide specialized instructions for specific tasks.",
+			"Use the read tool to load a skill's file when the task matches its description.",
+			"When a skill file references a relative path, resolve it against the skill directory (shown in the location field).",
+			"",
+			"<available_skills>",
+			skillItems,
+			"</available_skills>",
+		].join("\n");
+	}
+
+	/** Derive the virtual filesystem path for a skill's SKILL.md file. */
+	private _skillFilePath(name: string): string {
+		const base = this._cwd.endsWith("/") ? this._cwd.slice(0, -1) : this._cwd;
+		return `${base}/skills/${name}/SKILL.md`;
 	}
 }

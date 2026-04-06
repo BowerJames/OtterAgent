@@ -351,6 +351,22 @@ export class ExtensionRunner {
 
 	// ─── Command Execution ────────────────────────────────────────────
 
+	/**
+	 * Register a command directly on the runner (used by AgentSession for skill commands).
+	 *
+	 * Skips registration if a command with the same name already exists so that
+	 * extension-registered commands always take precedence over skill commands
+	 * for bare names. The `skill:<name>` namespaced form is unaffected because
+	 * extensions never register commands with colons in the name.
+	 *
+	 * @returns `true` if the command was registered, `false` if it already existed.
+	 */
+	registerCommand(name: string, options: CommandOptions): boolean {
+		if (this._commands.has(name)) return false;
+		this._commands.set(name, { name, options });
+		return true;
+	}
+
 	/** Get registered commands. */
 	getCommands(): CommandInfo[] {
 		return [...this._commands.values()].map((c) => ({
