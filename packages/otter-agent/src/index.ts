@@ -1,6 +1,7 @@
 // OtterAgent interfaces
 export type {
 	EntryId,
+	ExtensionTemplate,
 	ReadonlySessionManager,
 	SessionContext,
 	SkillDefinition,
@@ -82,6 +83,11 @@ export type {
 	TurnStartEvent,
 } from "./extensions/index.js";
 export { createEventBus, ExtensionRunner } from "./extensions/index.js";
+export {
+	ExtensionConfigValidationError,
+	validateExtensionConfig,
+	validateExtensionConfigOnly,
+} from "./extensions/index.js";
 
 // AgentSession
 export {
