@@ -82,4 +82,77 @@ describe("parseCliArgs", () => {
 		expect(args.cwd).toBeUndefined();
 		expect(args.apiKey).toBeUndefined();
 	});
+
+	describe("--extension / -e flag", () => {
+		test("defaults to empty array when not provided", () => {
+			const args = parseCliArgs(baseArgs);
+			expect(args.extensions).toEqual([]);
+		});
+
+		test("parses a single -e flag", () => {
+			const args = parseCliArgs([...baseArgs, "-e", "./ext.json"]);
+			expect(args.extensions).toEqual(["./ext.json"]);
+		});
+
+		test("parses a single --extension flag", () => {
+			const args = parseCliArgs([...baseArgs, "--extension", "./ext.yaml"]);
+			expect(args.extensions).toEqual(["./ext.yaml"]);
+		});
+
+		test("parses multiple -e flags", () => {
+			const args = parseCliArgs([
+				...baseArgs,
+				"-e",
+				"./plan-mode.json",
+				"-e",
+				"./custom-tools.yaml",
+			]);
+			expect(args.extensions).toEqual(["./plan-mode.json", "./custom-tools.yaml"]);
+		});
+
+		test("parses mixed -e and --extension flags", () => {
+			const args = parseCliArgs([
+				...baseArgs,
+				"-e",
+				"./a.json",
+				"--extension",
+				"./b.yaml",
+				"-e",
+				"./c.json",
+			]);
+			expect(args.extensions).toEqual(["./a.json", "./b.yaml", "./c.json"]);
+		});
+
+		test("exits when -e is the last argument with no value", async () => {
+			const cliPath = new URL("../dist/cli.js", import.meta.url).pathname;
+			const proc = Bun.spawn(["bun", "run", cliPath, ...baseArgs, "-e"], {
+				stderr: "pipe",
+			});
+			await proc.exited;
+			expect(proc.exitCode).toBe(1);
+			const stderr = await new Response(proc.stderr).text();
+			expect(stderr).toContain("requires a path argument");
+		});
+
+		test("exits when --extension is the last argument with no value", async () => {
+			const cliPath = new URL("../dist/cli.js", import.meta.url).pathname;
+			const proc = Bun.spawn(["bun", "run", cliPath, ...baseArgs, "--extension"], {
+				stderr: "pipe",
+			});
+			await proc.exited;
+			expect(proc.exitCode).toBe(1);
+			const stderr = await new Response(proc.stderr).text();
+			expect(stderr).toContain("requires a path argument");
+		});
+
+		test("extensions are included in help short-circuit", () => {
+			const args = parseCliArgs(["--help", "-e", "./ext.json"]);
+			expect(args.extensions).toEqual(["./ext.json"]);
+		});
+
+		test("extensions are included in version short-circuit", () => {
+			const args = parseCliArgs(["--version", "--extension", "./ext.yaml"]);
+			expect(args.extensions).toEqual(["./ext.yaml"]);
+		});
+	});
 });
