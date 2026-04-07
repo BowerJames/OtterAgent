@@ -11,6 +11,7 @@ export interface ParsedArgs {
 	thinking: ThinkingLevel | undefined;
 	systemPrompt: string | undefined;
 	cwd: string | undefined;
+	extensions: string[];
 	help: boolean;
 	version: boolean;
 }
@@ -26,13 +27,43 @@ Options:
   --thinking <level>      Thinking level: off, minimal, low, medium, high, xhigh.
   --system-prompt <text>  Base system prompt.
   --cwd <path>            Working directory for the agent environment.
+  --extension, -e <path>  Load an extension config file (JSON or YAML). Can be repeated.
   --help                  Show this help message.
   --version               Print the version and exit.
 `.trim();
 
+/**
+ * Collect repeatable flags that node:util.parseArgs doesn't support natively.
+ *
+ * Scans argv for -e / --extension and returns the collected values along
+ * with the remaining args (minus the collected flags and their values).
+ */
+function collectRepeatableFlags(argv: string[]): { extensions: string[]; filteredArgs: string[] } {
+	const extensions: string[] = [];
+	const filteredArgs: string[] = [];
+
+	for (let i = 0; i < argv.length; i++) {
+		const arg = argv[i];
+		if (arg === "--extension" || arg === "-e") {
+			if (i + 1 < argv.length) {
+				extensions.push(argv[++i]);
+			} else {
+				console.error(`Error: ${arg} requires a path argument.`);
+				process.exit(1);
+			}
+		} else {
+			filteredArgs.push(arg);
+		}
+	}
+
+	return { extensions, filteredArgs };
+}
+
 export function parseCliArgs(argv: string[]): ParsedArgs {
+	const { extensions, filteredArgs } = collectRepeatableFlags(argv);
+
 	const { values } = parseArgs({
-		args: argv,
+		args: filteredArgs,
 		options: {
 			mode: { type: "string" },
 			provider: { type: "string" },
@@ -76,6 +107,7 @@ export function parseCliArgs(argv: string[]): ParsedArgs {
 			thinking,
 			systemPrompt: values["system-prompt"] as string | undefined,
 			cwd: values.cwd as string | undefined,
+			extensions,
 			help,
 			version,
 		};
@@ -106,6 +138,7 @@ export function parseCliArgs(argv: string[]): ParsedArgs {
 		thinking,
 		systemPrompt: values["system-prompt"] as string | undefined,
 		cwd: values.cwd as string | undefined,
+		extensions,
 		help: false,
 		version: false,
 	};

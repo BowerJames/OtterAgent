@@ -32,6 +32,8 @@
       "dependencies": {
         "@mariozechner/pi-agent-core": "^0.64.0",
         "@otter-agent/core": "workspace:*",
+        "@sinclair/typebox": "^0.34.0",
+        "yaml": "^2.7.0",
       },
     },
   },
