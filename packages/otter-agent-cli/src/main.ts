@@ -1,6 +1,7 @@
 import { AgentEnvironment, type AuthStorage, ModelRegistry } from "@otter-agent/core";
 import { parseCliArgs, printHelp } from "./args.js";
 import { buildAuthStorageFromEnv } from "./auth.js";
+import { loadExtensionsFromConfigFiles } from "./load-extensions.js";
 import { runRpcMode } from "./rpc/rpc-mode.js";
 
 const VERSION = "0.0.1";
@@ -49,11 +50,15 @@ export async function main(argv: string[]): Promise<void> {
 		cwd: args.cwd ?? process.cwd(),
 	});
 
+	// Load extensions from config files (non-fatal: errors are logged as warnings)
+	const extensions = await loadExtensionsFromConfigFiles(args.extensions);
+
 	await runRpcMode({
 		authStorage,
 		environment,
 		systemPrompt: args.systemPrompt ?? "You are a helpful AI assistant.",
 		model,
 		thinkingLevel: args.thinking,
+		extensions: extensions.length > 0 ? extensions : undefined,
 	});
 }

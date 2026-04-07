@@ -1,0 +1,7 @@
+{
+	"path": "./valid-extension.ts",
+	"config": {
+		"apiKey": "sk-test",
+		"maxRetries": "not-a-number"
+	}
+}

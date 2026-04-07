@@ -1,0 +1,4 @@
+path: ./valid-extension.ts
+config:
+  apiKey: sk-yaml-key
+  maxRetries: 10
