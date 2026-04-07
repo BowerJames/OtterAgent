@@ -35,20 +35,7 @@ export function validateExtensionConfig<TConfig extends TSchema>(
 	template: ExtensionTemplate<TConfig>,
 	rawConfig: Partial<Static<TConfig>> = {},
 ): Extension {
-	const defaults = template.defaultConfig();
-	const schema = template.configSchema();
-
-	// Deep merge: defaults as base, rawConfig overrides
-	const merged = deepMerge(defaults, rawConfig) as Static<TConfig>;
-
-	// Validate against schema
-	const compiler = TypeCompiler.Compile(schema);
-	const errors = [...compiler.Errors(merged)].map((e) => `${e.path}: ${e.message}`);
-
-	if (errors.length > 0) {
-		throw new ExtensionConfigValidationError(template, errors);
-	}
-
+	const merged = mergeAndValidate(template, rawConfig);
 	return template.buildExtension(merged);
 }
 
@@ -68,11 +55,20 @@ export function validateExtensionConfigOnly<TConfig extends TSchema>(
 	template: ExtensionTemplate<TConfig>,
 	rawConfig: Partial<Static<TConfig>> = {},
 ): Static<TConfig> {
+	return mergeAndValidate(template, rawConfig);
+}
+
+function mergeAndValidate<TConfig extends TSchema>(
+	template: ExtensionTemplate<TConfig>,
+	rawConfig: Partial<Static<TConfig>>,
+): Static<TConfig> {
 	const defaults = template.defaultConfig();
 	const schema = template.configSchema();
 
+	// Deep merge: defaults as base, rawConfig overrides
 	const merged = deepMerge(defaults, rawConfig) as Static<TConfig>;
 
+	// Validate against schema
 	const compiler = TypeCompiler.Compile(schema);
 	const errors = [...compiler.Errors(merged)].map((e) => `${e.path}: ${e.message}`);
 

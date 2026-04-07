@@ -42,10 +42,10 @@ export type {
 export type { Extension } from "./extension.js";
 export { ExtensionRunner } from "./extension-runner.js";
 export {
+	ExtensionConfigValidationError,
 	validateExtensionConfig,
 	validateExtensionConfigOnly,
 } from "./validate-extension-config.js";
-export { ExtensionConfigValidationError } from "./validate-extension-config.js";
 export type { ExtensionRunnerActions } from "./extension-runner.js";
 export type { ExtensionHandler, ExtensionsAPI, ToolInfo } from "./extensions-api.js";
 export type { ProviderConfig, ProviderModelConfig } from "./providers.js";
