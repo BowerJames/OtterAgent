@@ -227,6 +227,14 @@ function displayEvent(event: Record<string, unknown>): void {
 			console.log(dim("── agent ended ──"));
 			break;
 
+		case "turn_start":
+			console.log(dim("  ── turn started ──"));
+			break;
+
+		case "turn_end":
+			console.log(dim("  ── turn ended ──"));
+			break;
+
 		case "message_start": {
 			const message = payload?.message as Record<string, unknown> | undefined;
 			const role = (message?.role as string) ?? "unknown";
@@ -246,10 +254,30 @@ function displayEvent(event: Record<string, unknown>): void {
 			break;
 		}
 
-		case "message_end":
-			// Final newline after streaming text
-			console.log();
+		case "message_end": {
+			const message = payload?.message as Record<string, unknown> | undefined;
+			const role = (message?.role as string) ?? "unknown";
+			const content = message?.content;
+
+			let text: string | undefined;
+			if (typeof content === "string") {
+				text = content;
+			} else if (Array.isArray(content)) {
+				text = content
+					.filter((block: Record<string, unknown>) => block.type === "text")
+					.map((block: Record<string, unknown>) => String(block.text ?? ""))
+					.join("");
+			}
+
+			if (role === "assistant") {
+				console.log(bold(cyan("assistant:")) + (text ? ` ${text}` : dim(" (no text content)")));
+			} else if (role === "user") {
+				console.log(bold(green("user:")) + (text ? ` ${text}` : dim(" (no text content)")));
+			} else {
+				console.log(bold(`${role}:`) + (text ? ` ${text}` : dim(" (no text content)")));
+			}
 			break;
+		}
 
 		case "tool_execution_start": {
 			const toolName = (payload?.toolName as string) ?? "unknown";
