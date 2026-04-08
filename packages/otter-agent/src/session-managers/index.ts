@@ -1,7 +1,17 @@
 import type { SessionManager as ISessionManager } from "../interfaces/session-manager.js";
 import { createInMemorySessionManager } from "./in-memory-session-manager.js";
+import {
+	type SqliteSessionManager,
+	type SqliteSessionManagerOptions,
+	createSqliteSessionManager,
+} from "./sqlite-session-manager.js";
 
 export { createInMemorySessionManager } from "./in-memory-session-manager.js";
+export {
+	createSqliteSessionManager,
+	SqliteSessionManager,
+	type SqliteSessionManagerOptions,
+} from "./sqlite-session-manager.js";
 
 /**
  * Namespace providing factory methods for built-in {@link ISessionManager}
@@ -28,5 +38,14 @@ export namespace SessionManager {
 	 */
 	export function inMemory(): ISessionManager {
 		return createInMemorySessionManager();
+	}
+
+	/**
+	 * Creates a SQLite-backed {@link ISessionManager} that persists entries
+	 * to a database file. Useful for production usage where session state
+	 * must survive process restarts.
+	 */
+	export function sqlite(options: SqliteSessionManagerOptions): SqliteSessionManager {
+		return createSqliteSessionManager(options);
 	}
 }
