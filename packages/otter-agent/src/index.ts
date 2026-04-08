@@ -81,13 +81,13 @@ export type {
 	ToolResultEventResult,
 	TurnEndEvent,
 	TurnStartEvent,
-} from "./extensions/index.js";
-export { createEventBus, ExtensionRunner } from "./extensions/index.js";
+} from "./extension-core/index.js";
+export { createEventBus, ExtensionRunner } from "./extension-core/index.js";
 export {
 	ExtensionConfigValidationError,
 	validateExtensionConfig,
 	validateExtensionConfigOnly,
-} from "./extensions/index.js";
+} from "./extension-core/index.js";
 
 // AgentSession
 export {

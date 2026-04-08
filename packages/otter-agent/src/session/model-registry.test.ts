@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from "bun:test";
 import type { Api, Model } from "@mariozechner/pi-ai";
-import type { ProviderConfig, ProviderModelConfig } from "../extensions/providers.js";
+import type { ProviderConfig, ProviderModelConfig } from "../extension-core/providers.js";
 import type { AuthStorage } from "../interfaces/auth-storage.js";
 import { ModelRegistry } from "./model-registry.js";
 
