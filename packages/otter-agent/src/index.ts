@@ -33,7 +33,13 @@ export { AuthStorage, createInMemoryAuthStorage } from "./auth-storages/index.js
 // Built-in SessionManager implementations.
 // SessionManager is exported as both a type (the interface) and a value
 // (namespace with factory methods) via declaration merging in session-managers/index.ts.
-export { createInMemorySessionManager, SessionManager } from "./session-managers/index.js";
+export {
+	createInMemorySessionManager,
+	createSqliteSessionManager,
+	SessionManager,
+	SqliteSessionManager,
+	type SqliteSessionManagerOptions,
+} from "./session-managers/index.js";
 
 // ExtensionsAPI
 export type {
