@@ -417,6 +417,80 @@ describe("SessionManager.sqlite()", () => {
 	});
 });
 
+// ─── constructor validation ────────────────────────────────────────────────────
+
+describe("constructor validation", () => {
+	test("throws for empty sessionId", () => {
+		expect(() => createSm("")).toThrow("sessionId must not be empty");
+	});
+
+	test("throws for sessionId exceeding 255 characters", () => {
+		const longId = "x".repeat(256);
+		expect(() => createSm(longId)).toThrow("sessionId must not exceed 255 characters");
+	});
+
+	test("accepts sessionId at exactly 255 characters", () => {
+		const exactId = "x".repeat(255);
+		const sm = createSm(exactId);
+		sm.appendMessage(makeUserMessage("ok"));
+		expect(sm.buildSessionContext().messages).toHaveLength(1);
+		sm.close();
+	});
+});
+
+// ─── close() ──────────────────────────────────────────────────────────────────
+
+describe("close()", () => {
+	test("close() can be called without error", () => {
+		const sm = createSm();
+		expect(() => sm.close()).not.toThrow();
+	});
+
+	test("calling close() twice logs a warning and does not throw", () => {
+		const sm = createSm();
+		const originalWarn = console.warn;
+		const warnings: unknown[] = [];
+		console.warn = (...args: unknown[]) => warnings.push(args);
+
+		try {
+			sm.close();
+			sm.close();
+
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0]).toEqual(
+				expect.arrayContaining([expect.stringContaining("already-closed")]),
+			);
+		} finally {
+			console.warn = originalWarn;
+		}
+	});
+
+	test("appendMessage throws after close", () => {
+		const sm = createSm();
+		sm.close();
+		expect(() => sm.appendMessage(makeUserMessage("test"))).toThrow("closed");
+	});
+
+	test("buildSessionContext throws after close", () => {
+		const sm = createSm();
+		sm.close();
+		expect(() => sm.buildSessionContext()).toThrow("closed");
+	});
+
+	test("appendCustomMessageEntry throws after close", () => {
+		const sm = createSm();
+		sm.close();
+		expect(() => sm.appendCustomMessageEntry("ext", "msg", true)).toThrow("closed");
+	});
+
+	test("compact throws after close", () => {
+		const sm = createSm();
+		const msgId = sm.appendMessage(makeUserMessage("hi"));
+		sm.close();
+		expect(() => sm.compact("summary", msgId)).toThrow("closed");
+	});
+});
+
 // ─── SQLite-specific tests ───────────────────────────────────────────────────
 
 describe("SQLite-specific behavior", () => {
@@ -513,6 +587,29 @@ describe("SQLite-specific behavior", () => {
 		// @ts-expect-error — accessing compactionSummary role field
 		expect(messages[0].tokensBefore).toBe(1000);
 		expect(messages[1].role).toBe("user");
+		sm2.close();
+	});
+
+	test("custom message timestamp is preserved across close/reopen", () => {
+		const path = dbPath();
+		const sessionId = "timestamp-test";
+
+		const beforeInsert = Date.now();
+
+		const sm1 = new SqliteSessionManager({ dbPath: path, sessionId });
+		sm1.appendCustomMessageEntry("ext-1", "original content", true);
+		sm1.close();
+
+		const afterInsert = Date.now();
+
+		const sm2 = new SqliteSessionManager({ dbPath: path, sessionId });
+		const { messages } = sm2.buildSessionContext();
+		expect(messages).toHaveLength(1);
+		// The timestamp should be between beforeInsert and afterInsert, not the current time.
+		// @ts-expect-error — accessing custom role field
+		const timestamp = messages[0].timestamp as number;
+		expect(timestamp).toBeGreaterThanOrEqual(beforeInsert);
+		expect(timestamp).toBeLessThanOrEqual(afterInsert);
 		sm2.close();
 	});
 

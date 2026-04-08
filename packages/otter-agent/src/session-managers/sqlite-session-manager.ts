@@ -15,6 +15,7 @@ type SqliteEntry =
 			content: string | (TextContent | ImageContent)[];
 			display: boolean;
 			details?: unknown;
+			timestamp: number;
 	  }
 	| { type: "customEntry"; id: EntryId; customType: string; data?: unknown }
 	| {
@@ -58,6 +59,19 @@ function validateTableName(tableName: string): void {
 	}
 }
 
+const MAX_SESSION_ID_LENGTH = 255;
+
+function validateSessionId(sessionId: string): void {
+	if (sessionId.length === 0) {
+		throw new Error("sessionId must not be empty.");
+	}
+	if (sessionId.length > MAX_SESSION_ID_LENGTH) {
+		throw new Error(
+			`sessionId must not exceed ${MAX_SESSION_ID_LENGTH} characters (got ${sessionId.length}).`,
+		);
+	}
+}
+
 // ─── Implementation ──────────────────────────────────────────────────────────
 
 /**
@@ -88,9 +102,12 @@ export class SqliteSessionManager implements SessionManager {
 	private readonly sessionId: string;
 	private readonly tableName: string;
 
+	private closed = false;
+
 	constructor(options: SqliteSessionManagerOptions) {
 		const tableName = options.tableName ?? "entries";
 		validateTableName(tableName);
+		validateSessionId(options.sessionId);
 
 		this.db = new Database(options.dbPath, { create: true });
 		this.sessionId = options.sessionId;
@@ -118,7 +135,14 @@ export class SqliteSessionManager implements SessionManager {
 
 	// ── Private helpers ──────────────────────────────────────────────────────
 
+	private assertNotClosed(): void {
+		if (this.closed) {
+			throw new Error("SqliteSessionManager is closed. No further operations are permitted.");
+		}
+	}
+
 	private insert(type: string, data: unknown): EntryId {
+		this.assertNotClosed();
 		const id = crypto.randomUUID();
 		const createdAt = new Date().toISOString();
 
@@ -133,6 +157,7 @@ export class SqliteSessionManager implements SessionManager {
 	}
 
 	private loadEntries(): SqliteEntry[] {
+		this.assertNotClosed();
 		const rows = this.db
 			.prepare(
 				`SELECT id, type, data FROM "${this.tableName}" WHERE session_id = ? ORDER BY seq ASC`,
@@ -152,6 +177,7 @@ export class SqliteSessionManager implements SessionManager {
 						content: parsed.content as string | (TextContent | ImageContent)[],
 						display: parsed.display as boolean,
 						details: parsed.details as unknown,
+						timestamp: parsed.timestamp as number,
 					};
 				case "customEntry":
 					return {
@@ -198,6 +224,7 @@ export class SqliteSessionManager implements SessionManager {
 	// ── SessionManager interface ─────────────────────────────────────────────
 
 	appendMessage(message: AgentMessage): EntryId {
+		this.assertNotClosed();
 		return this.insert("message", { message });
 	}
 
@@ -207,18 +234,28 @@ export class SqliteSessionManager implements SessionManager {
 		display: boolean,
 		details?: unknown,
 	): EntryId {
-		return this.insert("customMessage", { customType, content, display, details });
+		this.assertNotClosed();
+		return this.insert("customMessage", {
+			customType,
+			content,
+			display,
+			details,
+			timestamp: Date.now(),
+		});
 	}
 
 	appendCustomEntry(customType: string, data?: unknown): EntryId {
+		this.assertNotClosed();
 		return this.insert("customEntry", { customType, data });
 	}
 
 	appendModelChange(model: { provider: string; modelId: string }, thinkingLevel: string): EntryId {
+		this.assertNotClosed();
 		return this.insert("modelChange", { model, thinkingLevel });
 	}
 
 	appendThinkingLevelChange(thinkingLevel: string): EntryId {
+		this.assertNotClosed();
 		return this.insert("thinkingLevelChange", { thinkingLevel });
 	}
 
@@ -228,14 +265,17 @@ export class SqliteSessionManager implements SessionManager {
 		tokensBefore = 0,
 		details?: unknown,
 	): EntryId {
+		this.assertNotClosed();
 		return this.insert("compaction", { summary, firstKeptEntryId, tokensBefore, details });
 	}
 
 	appendLabel(label: string, targetEntryId: EntryId): EntryId {
+		this.assertNotClosed();
 		return this.insert("label", { label, targetEntryId });
 	}
 
 	buildSessionContext(): SessionContext {
+		this.assertNotClosed();
 		const entries = this.loadEntries();
 
 		// Find the latest compaction entry.
@@ -303,9 +343,16 @@ export class SqliteSessionManager implements SessionManager {
 	 * Close the underlying database connection.
 	 *
 	 * After calling this, any further method calls on this instance will throw.
+	 * Calling close() more than once is safe — subsequent calls log a warning
+	 * and return silently.
 	 */
 	close(): void {
+		if (this.closed) {
+			console.warn("SqliteSessionManager.close() called on an already-closed instance.");
+			return;
+		}
 		this.db.close();
+		this.closed = true;
 	}
 }
 
@@ -323,7 +370,7 @@ function extractMessages(entries: SqliteEntry[]): AgentMessage[] {
 					entry.content,
 					entry.display,
 					entry.details,
-					Date.now(),
+					entry.timestamp,
 				),
 			);
 		}
