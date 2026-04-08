@@ -1,5 +1,5 @@
 import type { Static, TSchema } from "@sinclair/typebox";
-import type { Extension } from "../extensions/extension.js";
+import type { Extension } from "../extension-core/extension.js";
 
 /**
  * A configurable factory for building extensions.

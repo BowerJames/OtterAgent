@@ -1,18 +1,17 @@
 ---
 name: code-review
 description: Run an independent code review using pi-coding-agent. Use after completing an implementation to get a second opinion before pushing. Pass the issue number or a short description of what was implemented.
-argument-hint: "[issue-number or description]"
 ---
 
 Run an independent code review of the current implementation using the pi-coding-agent CLI.
 
 ## What to do
 
-1. Identify the issue number:
-   - If `$ARGUMENTS` is a number, use it directly as the issue number.
-   - If `$ARGUMENTS` is a description, find the matching issue: `gh issue list --repo BowerJames/OtterAgent --search "$ARGUMENTS" --json number,title --limit 5`
+1. Identify the issue:
+    - If there is no issue for the work create one. It must cover high level goals, implementation decisions made, specifications and acceptance criteria.
+    - I an issue already exists for the work read it and its comments and verify it is up to date with all decisions made. If there are recent decision you and the user have made update the issue so that they are reflected.
 
-2. Identify the files changed in the most recent commit(s): `git diff HEAD~1..HEAD --name-only`
+2. Identify the files changed.
 
 3. Build a review prompt (see structure below). The prompt must **include the issue number** so pi can look it up itself — do NOT embed the issue contents in the prompt.
 
@@ -20,6 +19,7 @@ Run an independent code review of the current implementation using the pi-coding
    ```
    pi --model glm-5-turbo -p "<your prompt>"
    ```
+   The review can take a while, set the bash timeout for 600 seconds.
 
 5. Report the full output of the review back to the user, then ask how to proceed.
 

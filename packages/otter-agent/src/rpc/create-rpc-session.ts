@@ -12,7 +12,7 @@
 import type { AgentOptions, ThinkingLevel } from "@mariozechner/pi-agent-core";
 import type { Api, Model } from "@mariozechner/pi-ai";
 import { createInMemoryAuthStorage } from "../auth-storages/in-memory-auth-storage.js";
-import type { Extension } from "../extensions/extension.js";
+import type { Extension } from "../extension-core/extension.js";
 import type { AgentEnvironment } from "../interfaces/agent-environment.js";
 import type { AuthStorage } from "../interfaces/auth-storage.js";
 import type { SessionManager } from "../interfaces/session-manager.js";

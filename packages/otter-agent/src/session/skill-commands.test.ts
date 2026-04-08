@@ -3,7 +3,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { mock } from "bun:test";
-import type { Extension } from "../extensions/extension.js";
+import type { Extension } from "../extension-core/extension.js";
 import type { AgentEnvironment } from "../interfaces/agent-environment.js";
 import type { AuthStorage } from "../interfaces/auth-storage.js";
 import type { SessionManager } from "../interfaces/session-manager.js";

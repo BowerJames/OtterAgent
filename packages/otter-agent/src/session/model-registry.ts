@@ -6,7 +6,7 @@
  * can register additional providers/models dynamically.
  */
 import { type Api, type Model, getModels, getProviders } from "@mariozechner/pi-ai";
-import type { ProviderConfig, ProviderModelConfig } from "../extensions/providers.js";
+import type { ProviderConfig, ProviderModelConfig } from "../extension-core/providers.js";
 import type { AuthStorage } from "../interfaces/auth-storage.js";
 
 export class ModelRegistry {
