@@ -7,6 +7,42 @@ import type { ImageContent, TextContent } from "@mariozechner/pi-ai";
 export type EntryId = string;
 
 /**
+ * Unified entry type for session storage.
+ *
+ * A discriminated union representing all possible entry kinds that can be
+ * stored by a {@link SessionManager} implementation. Every entry carries a
+ * unique {@link EntryId} and a `type` discriminator.
+ */
+export type Entry =
+	| { type: "message"; id: EntryId; message: AgentMessage }
+	| {
+			type: "customMessage";
+			id: EntryId;
+			customType: string;
+			content: string | (TextContent | ImageContent)[];
+			display: boolean;
+			details?: unknown;
+			timestamp: number;
+	  }
+	| { type: "customEntry"; id: EntryId; customType: string; data?: unknown }
+	| {
+			type: "modelChange";
+			id: EntryId;
+			model: { provider: string; modelId: string };
+			thinkingLevel: string;
+	  }
+	| { type: "thinkingLevelChange"; id: EntryId; thinkingLevel: string }
+	| {
+			type: "compaction";
+			id: EntryId;
+			summary: string;
+			firstKeptEntryId: EntryId;
+			tokensBefore: number;
+			details?: unknown;
+	  }
+	| { type: "label"; id: EntryId; label: string; targetEntryId: EntryId };
+
+/**
  * The result of building session context for the LLM.
  *
  * Contains the ordered message list along with the model and thinking

@@ -1,38 +1,15 @@
 import type { AgentMessage, ThinkingLevel } from "@mariozechner/pi-agent-core";
 import type { ImageContent, TextContent } from "@mariozechner/pi-ai";
-import type { EntryId, SessionContext, SessionManager } from "../interfaces/session-manager.js";
+import type {
+	Entry,
+	EntryId,
+	SessionContext,
+	SessionManager,
+} from "../interfaces/session-manager.js";
 import { createCompactionSummaryMessage, createCustomMessage } from "../session/messages.js";
 
-type InMemoryEntry =
-	| { type: "message"; id: EntryId; message: AgentMessage }
-	| {
-			type: "customMessage";
-			id: EntryId;
-			customType: string;
-			content: string | (TextContent | ImageContent)[];
-			display: boolean;
-			details?: unknown;
-	  }
-	| { type: "customEntry"; id: EntryId; customType: string; data?: unknown }
-	| {
-			type: "modelChange";
-			id: EntryId;
-			model: { provider: string; modelId: string };
-			thinkingLevel: string;
-	  }
-	| { type: "thinkingLevelChange"; id: EntryId; thinkingLevel: string }
-	| {
-			type: "compaction";
-			id: EntryId;
-			summary: string;
-			firstKeptEntryId: EntryId;
-			tokensBefore: number;
-			details?: unknown;
-	  }
-	| { type: "label"; id: EntryId; label: string; targetEntryId: EntryId };
-
 export class InMemorySessionManager implements SessionManager {
-	private readonly entries: InMemoryEntry[] = [];
+	private readonly entries: Entry[] = [];
 	private nextId = 1;
 
 	private generateId(): EntryId {
@@ -52,7 +29,15 @@ export class InMemorySessionManager implements SessionManager {
 		details?: unknown,
 	): EntryId {
 		const id = this.generateId();
-		this.entries.push({ type: "customMessage", id, customType, content, display, details });
+		this.entries.push({
+			type: "customMessage",
+			id,
+			customType,
+			content,
+			display,
+			details,
+			timestamp: Date.now(),
+		});
 		return id;
 	}
 
@@ -93,7 +78,7 @@ export class InMemorySessionManager implements SessionManager {
 
 	buildSessionContext(): SessionContext {
 		// Find the latest compaction entry.
-		let latestCompaction: Extract<InMemoryEntry, { type: "compaction" }> | undefined;
+		let latestCompaction: Extract<Entry, { type: "compaction" }> | undefined;
 		for (const entry of this.entries) {
 			if (entry.type === "compaction") {
 				latestCompaction = entry;
@@ -152,7 +137,7 @@ export class InMemorySessionManager implements SessionManager {
 		return { messages, thinkingLevel: thinkingLevel as ThinkingLevel, model };
 	}
 
-	private extractMessages(entries: InMemoryEntry[]): AgentMessage[] {
+	private extractMessages(entries: Entry[]): AgentMessage[] {
 		const messages: AgentMessage[] = [];
 		for (const entry of entries) {
 			if (entry.type === "message") {
@@ -164,7 +149,7 @@ export class InMemorySessionManager implements SessionManager {
 						entry.content,
 						entry.display,
 						entry.details,
-						Date.now(),
+						entry.timestamp,
 					),
 				);
 			}

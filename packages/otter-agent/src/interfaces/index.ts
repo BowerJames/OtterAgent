@@ -1,6 +1,7 @@
 export type { AgentEnvironment } from "./agent-environment.js";
 export type { AuthStorage } from "./auth-storage.js";
 export type {
+	Entry,
 	SessionContext,
 	SessionManager,
 	ReadonlySessionManager,

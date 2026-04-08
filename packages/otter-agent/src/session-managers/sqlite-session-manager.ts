@@ -1,39 +1,13 @@
 import { Database } from "bun:sqlite";
 import type { AgentMessage, ThinkingLevel } from "@mariozechner/pi-agent-core";
 import type { ImageContent, TextContent } from "@mariozechner/pi-ai";
-import type { EntryId, SessionContext, SessionManager } from "../interfaces/session-manager.js";
+import type {
+	Entry,
+	EntryId,
+	SessionContext,
+	SessionManager,
+} from "../interfaces/session-manager.js";
 import { createCompactionSummaryMessage, createCustomMessage } from "../session/messages.js";
-
-// ─── Entry types (mirrors InMemoryEntry) ─────────────────────────────────────
-
-type SqliteEntry =
-	| { type: "message"; id: EntryId; message: AgentMessage }
-	| {
-			type: "customMessage";
-			id: EntryId;
-			customType: string;
-			content: string | (TextContent | ImageContent)[];
-			display: boolean;
-			details?: unknown;
-			timestamp: number;
-	  }
-	| { type: "customEntry"; id: EntryId; customType: string; data?: unknown }
-	| {
-			type: "modelChange";
-			id: EntryId;
-			model: { provider: string; modelId: string };
-			thinkingLevel: string;
-	  }
-	| { type: "thinkingLevelChange"; id: EntryId; thinkingLevel: string }
-	| {
-			type: "compaction";
-			id: EntryId;
-			summary: string;
-			firstKeptEntryId: EntryId;
-			tokensBefore: number;
-			details?: unknown;
-	  }
-	| { type: "label"; id: EntryId; label: string; targetEntryId: EntryId };
 
 // ─── Options ─────────────────────────────────────────────────────────────────
 
@@ -156,7 +130,7 @@ export class SqliteSessionManager implements SessionManager {
 		return id;
 	}
 
-	private loadEntries(): SqliteEntry[] {
+	private loadEntries(): Entry[] {
 		this.assertNotClosed();
 		const rows = this.db
 			.prepare(
@@ -279,7 +253,7 @@ export class SqliteSessionManager implements SessionManager {
 		const entries = this.loadEntries();
 
 		// Find the latest compaction entry.
-		let latestCompaction: Extract<SqliteEntry, { type: "compaction" }> | undefined;
+		let latestCompaction: Extract<Entry, { type: "compaction" }> | undefined;
 		for (const entry of entries) {
 			if (entry.type === "compaction") {
 				latestCompaction = entry;
@@ -358,7 +332,7 @@ export class SqliteSessionManager implements SessionManager {
 
 // ─── Standalone extraction helper (avoids `this` binding in callbacks) ───────
 
-function extractMessages(entries: SqliteEntry[]): AgentMessage[] {
+function extractMessages(entries: Entry[]): AgentMessage[] {
 	const messages: AgentMessage[] = [];
 	for (const entry of entries) {
 		if (entry.type === "message") {

@@ -1,5 +1,6 @@
 // OtterAgent interfaces
 export type {
+	Entry,
 	EntryId,
 	ExtensionTemplate,
 	ReadonlySessionManager,

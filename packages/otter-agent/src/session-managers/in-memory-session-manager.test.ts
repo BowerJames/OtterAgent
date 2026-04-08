@@ -101,6 +101,24 @@ describe("appendCustomMessageEntry", () => {
 		// @ts-expect-error — accessing custom role field
 		expect(messages[0].content).toEqual(content);
 	});
+
+	test("timestamp reflects creation time, not context-build time", async () => {
+		const sm = createInMemorySessionManager();
+
+		const beforeInsert = Date.now();
+		sm.appendCustomMessageEntry("ext-1", "original content", true);
+		const afterInsert = Date.now();
+
+		// Small delay to ensure buildSessionContext runs at a later time.
+		await Bun.sleep(10);
+
+		const { messages } = sm.buildSessionContext();
+		expect(messages).toHaveLength(1);
+		// @ts-expect-error — accessing custom role field
+		const timestamp = messages[0].timestamp as number;
+		expect(timestamp).toBeGreaterThanOrEqual(beforeInsert);
+		expect(timestamp).toBeLessThanOrEqual(afterInsert);
+	});
 });
 
 // ─── appendCustomEntry ────────────────────────────────────────────────────────
