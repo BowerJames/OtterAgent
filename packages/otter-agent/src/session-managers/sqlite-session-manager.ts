@@ -92,13 +92,12 @@ export class SqliteSessionManager implements SessionManager {
 
 		this.db.exec(`
 			CREATE TABLE IF NOT EXISTS "${this.tableName}" (
-				id         TEXT NOT NULL,
+				id         INTEGER PRIMARY KEY AUTOINCREMENT,
 				session_id TEXT NOT NULL,
 				seq        INTEGER NOT NULL,
 				type       TEXT NOT NULL,
-				data       TEXT NOT NULL,
-				created_at TEXT NOT NULL,
-				PRIMARY KEY (id)
+				entry      TEXT NOT NULL,
+				created_at TEXT NOT NULL
 			)
 		`);
 
@@ -115,91 +114,35 @@ export class SqliteSessionManager implements SessionManager {
 		}
 	}
 
-	private insert(type: string, data: unknown): EntryId {
+	private insert(entry: Entry): EntryId {
 		this.assertNotClosed();
-		const id = crypto.randomUUID();
 		const createdAt = new Date().toISOString();
 
 		this.db
 			.prepare(
-				`INSERT INTO "${this.tableName}" (id, session_id, seq, type, data, created_at)
-			 VALUES (?, ?, (SELECT COALESCE(MAX(seq), 0) + 1 FROM "${this.tableName}" WHERE session_id = ?), ?, ?, ?)`,
+				`INSERT INTO "${this.tableName}" (session_id, seq, type, entry, created_at)
+			 VALUES (?, (SELECT COALESCE(MAX(seq), 0) + 1 FROM "${this.tableName}" WHERE session_id = ?), ?, ?, ?)`,
 			)
-			.run(id, this.sessionId, this.sessionId, type, JSON.stringify(data), createdAt);
+			.run(this.sessionId, this.sessionId, entry.type, JSON.stringify(entry), createdAt);
 
-		return id;
+		return entry.id;
 	}
 
 	private loadEntries(): Entry[] {
 		this.assertNotClosed();
 		const rows = this.db
-			.prepare(
-				`SELECT id, type, data FROM "${this.tableName}" WHERE session_id = ? ORDER BY seq ASC`,
-			)
-			.all(this.sessionId) as { id: string; type: string; data: string }[];
+			.prepare(`SELECT entry FROM "${this.tableName}" WHERE session_id = ? ORDER BY seq ASC`)
+			.all(this.sessionId) as { entry: string }[];
 
-		return rows.map((row) => {
-			const parsed = JSON.parse(row.data) as Record<string, unknown>;
-			switch (row.type) {
-				case "message":
-					return { type: "message", id: row.id, message: parsed.message as AgentMessage };
-				case "customMessage":
-					return {
-						type: "customMessage",
-						id: row.id,
-						customType: parsed.customType as string,
-						content: parsed.content as string | (TextContent | ImageContent)[],
-						display: parsed.display as boolean,
-						details: parsed.details as unknown,
-						timestamp: parsed.timestamp as number,
-					};
-				case "customEntry":
-					return {
-						type: "customEntry",
-						id: row.id,
-						customType: parsed.customType as string,
-						data: parsed.data as unknown,
-					};
-				case "modelChange":
-					return {
-						type: "modelChange",
-						id: row.id,
-						model: parsed.model as { provider: string; modelId: string },
-						thinkingLevel: parsed.thinkingLevel as string,
-					};
-				case "thinkingLevelChange":
-					return {
-						type: "thinkingLevelChange",
-						id: row.id,
-						thinkingLevel: parsed.thinkingLevel as string,
-					};
-				case "compaction":
-					return {
-						type: "compaction",
-						id: row.id,
-						summary: parsed.summary as string,
-						firstKeptEntryId: parsed.firstKeptEntryId as EntryId,
-						tokensBefore: parsed.tokensBefore as number,
-						details: parsed.details as unknown,
-					};
-				case "label":
-					return {
-						type: "label",
-						id: row.id,
-						label: parsed.label as string,
-						targetEntryId: parsed.targetEntryId as EntryId,
-					};
-				default:
-					throw new Error(`Unknown entry type "${row.type}" in session data.`);
-			}
-		});
+		return rows.map((row) => JSON.parse(row.entry) as Entry);
 	}
 
 	// ── SessionManager interface ─────────────────────────────────────────────
 
 	appendMessage(message: AgentMessage): EntryId {
 		this.assertNotClosed();
-		return this.insert("message", { message });
+		const id = crypto.randomUUID();
+		return this.insert({ type: "message", id, message });
 	}
 
 	appendCustomMessageEntry(
@@ -209,7 +152,10 @@ export class SqliteSessionManager implements SessionManager {
 		details?: unknown,
 	): EntryId {
 		this.assertNotClosed();
-		return this.insert("customMessage", {
+		const id = crypto.randomUUID();
+		return this.insert({
+			type: "customMessage",
+			id,
 			customType,
 			content,
 			display,
@@ -220,17 +166,20 @@ export class SqliteSessionManager implements SessionManager {
 
 	appendCustomEntry(customType: string, data?: unknown): EntryId {
 		this.assertNotClosed();
-		return this.insert("customEntry", { customType, data });
+		const id = crypto.randomUUID();
+		return this.insert({ type: "customEntry", id, customType, data });
 	}
 
 	appendModelChange(model: { provider: string; modelId: string }, thinkingLevel: string): EntryId {
 		this.assertNotClosed();
-		return this.insert("modelChange", { model, thinkingLevel });
+		const id = crypto.randomUUID();
+		return this.insert({ type: "modelChange", id, model, thinkingLevel });
 	}
 
 	appendThinkingLevelChange(thinkingLevel: string): EntryId {
 		this.assertNotClosed();
-		return this.insert("thinkingLevelChange", { thinkingLevel });
+		const id = crypto.randomUUID();
+		return this.insert({ type: "thinkingLevelChange", id, thinkingLevel });
 	}
 
 	compact(
@@ -240,12 +189,21 @@ export class SqliteSessionManager implements SessionManager {
 		details?: unknown,
 	): EntryId {
 		this.assertNotClosed();
-		return this.insert("compaction", { summary, firstKeptEntryId, tokensBefore, details });
+		const id = crypto.randomUUID();
+		return this.insert({
+			type: "compaction",
+			id,
+			summary,
+			firstKeptEntryId,
+			tokensBefore,
+			details,
+		});
 	}
 
 	appendLabel(label: string, targetEntryId: EntryId): EntryId {
 		this.assertNotClosed();
-		return this.insert("label", { label, targetEntryId });
+		const id = crypto.randomUUID();
+		return this.insert({ type: "label", id, label, targetEntryId });
 	}
 
 	buildSessionContext(): SessionContext {
