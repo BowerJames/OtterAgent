@@ -31,7 +31,7 @@ type InMemoryEntry =
 	  }
 	| { type: "label"; id: EntryId; label: string; targetEntryId: EntryId };
 
-class InMemorySessionManager implements SessionManager {
+export class InMemorySessionManager implements SessionManager {
 	private readonly entries: InMemoryEntry[] = [];
 	private nextId = 1;
 
@@ -178,6 +178,6 @@ class InMemorySessionManager implements SessionManager {
  * memory without any filesystem persistence. Suitable for testing,
  * programmatic/embedded usage, and consumers who manage their own persistence.
  */
-export function createInMemorySessionManager(): SessionManager {
+export function createInMemorySessionManager(): InMemorySessionManager {
 	return new InMemorySessionManager();
 }

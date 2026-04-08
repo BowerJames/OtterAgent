@@ -1,12 +1,18 @@
 import type { SessionManager as ISessionManager } from "../interfaces/session-manager.js";
-import { createInMemorySessionManager } from "./in-memory-session-manager.js";
+import {
+	type InMemorySessionManager,
+	createInMemorySessionManager,
+} from "./in-memory-session-manager.js";
 import {
 	type SqliteSessionManager,
 	type SqliteSessionManagerOptions,
 	createSqliteSessionManager,
 } from "./sqlite-session-manager.js";
 
-export { createInMemorySessionManager } from "./in-memory-session-manager.js";
+export {
+	createInMemorySessionManager,
+	InMemorySessionManager,
+} from "./in-memory-session-manager.js";
 export {
 	createSqliteSessionManager,
 	SqliteSessionManager,
@@ -32,11 +38,11 @@ export interface SessionManager extends ISessionManager {}
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace SessionManager {
 	/**
-	 * Creates an in-memory {@link ISessionManager} with no filesystem
+	 * Creates an in-memory {@link InMemorySessionManager} with no filesystem
 	 * persistence. Useful for testing, embedded usage, and consumers who
 	 * manage their own persistence.
 	 */
-	export function inMemory(): ISessionManager {
+	export function inMemory(): InMemorySessionManager {
 		return createInMemorySessionManager();
 	}
 

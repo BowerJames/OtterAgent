@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createInMemoryAuthStorage } from "./in-memory-auth-storage.js";
+import { InMemoryAuthStorage, createInMemoryAuthStorage } from "./in-memory-auth-storage.js";
 import { AuthStorage } from "./index.js";
 
 // ─── createInMemoryAuthStorage ────────────────────────────────────────────────
@@ -67,5 +67,34 @@ describe("AuthStorage.inMemory()", () => {
 		const auth2 = createInMemoryAuthStorage();
 		expect(typeof auth1.getApiKey).toBe("function");
 		expect(typeof auth2.getApiKey).toBe("function");
+	});
+});
+
+// ─── InMemoryAuthStorage — direct construction & instanceof ─────────────────
+
+describe("InMemoryAuthStorage — direct construction", () => {
+	test("can be constructed directly via new", async () => {
+		const auth = new InMemoryAuthStorage({ anthropic: "sk-ant-123" });
+		expect(await auth.getApiKey("anthropic")).toBe("sk-ant-123");
+	});
+
+	test("returns undefined for unknown provider when constructed directly", async () => {
+		const auth = new InMemoryAuthStorage({ anthropic: "sk-ant-123" });
+		expect(await auth.getApiKey("openai")).toBeUndefined();
+	});
+
+	test("instanceof InMemoryAuthStorage is true for direct construction", () => {
+		const auth = new InMemoryAuthStorage();
+		expect(auth instanceof InMemoryAuthStorage).toBe(true);
+	});
+
+	test("instanceof InMemoryAuthStorage is true for factory creation", () => {
+		const auth = createInMemoryAuthStorage();
+		expect(auth instanceof InMemoryAuthStorage).toBe(true);
+	});
+
+	test("instanceof InMemoryAuthStorage is true for namespace factory creation", () => {
+		const auth = AuthStorage.inMemory();
+		expect(auth instanceof InMemoryAuthStorage).toBe(true);
 	});
 });

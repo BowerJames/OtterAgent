@@ -1,7 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import { COMPACTION_SUMMARY_PREFIX, COMPACTION_SUMMARY_SUFFIX } from "../session/messages.js";
-import { createInMemorySessionManager } from "./in-memory-session-manager.js";
+import {
+	InMemorySessionManager,
+	createInMemorySessionManager,
+} from "./in-memory-session-manager.js";
 import { SessionManager } from "./index.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -375,5 +378,32 @@ describe("SessionManager.inMemory()", () => {
 		const sm2 = createInMemorySessionManager();
 		expect(typeof sm1.appendMessage).toBe("function");
 		expect(typeof sm2.appendMessage).toBe("function");
+	});
+});
+
+// ─── InMemorySessionManager — direct construction & instanceof ──────────────
+
+describe("InMemorySessionManager — direct construction", () => {
+	test("can be constructed directly via new", () => {
+		const sm = new InMemorySessionManager();
+		const ctx = sm.buildSessionContext();
+		expect(ctx.messages).toEqual([]);
+		expect(ctx.thinkingLevel).toBe("off");
+		expect(ctx.model).toBeNull();
+	});
+
+	test("instanceof InMemorySessionManager is true for direct construction", () => {
+		const sm = new InMemorySessionManager();
+		expect(sm instanceof InMemorySessionManager).toBe(true);
+	});
+
+	test("instanceof InMemorySessionManager is true for factory creation", () => {
+		const sm = createInMemorySessionManager();
+		expect(sm instanceof InMemorySessionManager).toBe(true);
+	});
+
+	test("instanceof InMemorySessionManager is true for namespace factory creation", () => {
+		const sm = SessionManager.inMemory();
+		expect(sm instanceof InMemorySessionManager).toBe(true);
 	});
 });
