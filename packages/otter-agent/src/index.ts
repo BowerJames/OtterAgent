@@ -36,7 +36,10 @@ export {
 export {
 	AuthStorage,
 	InMemoryAuthStorage,
+	SqliteAuthStorage,
 	createInMemoryAuthStorage,
+	createSqliteAuthStorage,
+	type SqliteAuthStorageOptions,
 } from "./auth-storages/index.js";
 
 // Built-in SessionManager implementations.

@@ -1,7 +1,17 @@
 import type { AuthStorage as IAuthStorage } from "../interfaces/auth-storage.js";
 import { type InMemoryAuthStorage, createInMemoryAuthStorage } from "./in-memory-auth-storage.js";
+import {
+	type SqliteAuthStorage,
+	type SqliteAuthStorageOptions,
+	createSqliteAuthStorage,
+} from "./sqlite-auth-storage.js";
 
 export { createInMemoryAuthStorage, InMemoryAuthStorage } from "./in-memory-auth-storage.js";
+export {
+	createSqliteAuthStorage,
+	SqliteAuthStorage,
+	type SqliteAuthStorageOptions,
+} from "./sqlite-auth-storage.js";
 
 /**
  * Namespace providing factory methods for built-in {@link IAuthStorage}
@@ -31,5 +41,14 @@ export namespace AuthStorage {
 	 */
 	export function inMemory(keys?: Record<string, string>): InMemoryAuthStorage {
 		return createInMemoryAuthStorage(keys);
+	}
+
+	/**
+	 * Creates a read-only SQLite-backed {@link SqliteAuthStorage} that retrieves
+	 * API keys from a database file. Keys are scoped by `storageId`. Useful for
+	 * production usage where credentials must survive process restarts.
+	 */
+	export function sqlite(options: SqliteAuthStorageOptions): SqliteAuthStorage {
+		return createSqliteAuthStorage(options);
 	}
 }
