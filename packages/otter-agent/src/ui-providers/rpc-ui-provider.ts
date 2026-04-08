@@ -16,7 +16,7 @@ interface PendingRequest {
 	reject: (error: Error) => void;
 }
 
-class RpcUIProvider implements UIProvider {
+export class RpcUIProvider implements UIProvider {
 	private readonly _transport: RpcTransport;
 	private readonly _pending = new Map<string, PendingRequest>();
 
@@ -114,7 +114,7 @@ class RpcUIProvider implements UIProvider {
  * requests.
  */
 export function createRpcUIProvider(transport: RpcTransport): {
-	uiProvider: UIProvider;
+	uiProvider: RpcUIProvider;
 	resolveResponse: (response: ExtensionUIResponse) => void;
 	rejectAll: (reason: string) => void;
 } {

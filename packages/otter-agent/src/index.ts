@@ -23,17 +23,27 @@ export {
 // Built-in UIProvider implementations.
 // UIProvider is exported as both a type (the interface) and a value
 // (namespace with factory methods) via declaration merging in ui-providers/index.ts.
-export { UIProvider, createNoOpUIProvider } from "./ui-providers/index.js";
+export {
+	UIProvider,
+	NoOpUIProvider,
+	RpcUIProvider,
+	createNoOpUIProvider,
+} from "./ui-providers/index.js";
 
 // Built-in AuthStorage implementations.
 // AuthStorage is exported as both a type (the interface) and a value
 // (namespace with factory methods) via declaration merging in auth-storages/index.ts.
-export { AuthStorage, createInMemoryAuthStorage } from "./auth-storages/index.js";
+export {
+	AuthStorage,
+	InMemoryAuthStorage,
+	createInMemoryAuthStorage,
+} from "./auth-storages/index.js";
 
 // Built-in SessionManager implementations.
 // SessionManager is exported as both a type (the interface) and a value
 // (namespace with factory methods) via declaration merging in session-managers/index.ts.
 export {
+	InMemorySessionManager,
 	createInMemorySessionManager,
 	createSqliteSessionManager,
 	SessionManager,

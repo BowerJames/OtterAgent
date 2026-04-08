@@ -1,7 +1,7 @@
 import type { AuthStorage as IAuthStorage } from "../interfaces/auth-storage.js";
-import { createInMemoryAuthStorage } from "./in-memory-auth-storage.js";
+import { type InMemoryAuthStorage, createInMemoryAuthStorage } from "./in-memory-auth-storage.js";
 
-export { createInMemoryAuthStorage } from "./in-memory-auth-storage.js";
+export { createInMemoryAuthStorage, InMemoryAuthStorage } from "./in-memory-auth-storage.js";
 
 /**
  * Namespace providing factory methods for built-in {@link IAuthStorage}
@@ -22,14 +22,14 @@ export interface AuthStorage extends IAuthStorage {}
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace AuthStorage {
 	/**
-	 * Creates a read-only in-memory {@link IAuthStorage} seeded with the
+	 * Creates a read-only in-memory {@link InMemoryAuthStorage} seeded with the
 	 * provided provider-to-API-key map. Useful for testing and embedded usage
 	 * where credentials are known at construction time.
 	 *
 	 * @param keys - Optional map of provider identifier to API key
 	 *   (e.g., `{ anthropic: "sk-ant-...", openai: "sk-..." }`).
 	 */
-	export function inMemory(keys?: Record<string, string>): IAuthStorage {
+	export function inMemory(keys?: Record<string, string>): InMemoryAuthStorage {
 		return createInMemoryAuthStorage(keys);
 	}
 }

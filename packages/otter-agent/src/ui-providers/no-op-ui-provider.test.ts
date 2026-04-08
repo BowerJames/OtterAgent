@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { UIProvider } from "./index.js";
-import { createNoOpUIProvider } from "./no-op-ui-provider.js";
+import { NoOpUIProvider, createNoOpUIProvider } from "./no-op-ui-provider.js";
 
 // ─── createNoOpUIProvider ─────────────────────────────────────────────────────
 
@@ -79,5 +79,33 @@ describe("UIProvider.noOp()", () => {
 		const ui1 = UIProvider.noOp();
 		const ui2 = UIProvider.noOp();
 		expect(ui1).not.toBe(ui2);
+	});
+});
+
+// ─── NoOpUIProvider — direct construction & instanceof ─────────────────────
+
+describe("NoOpUIProvider — direct construction", () => {
+	test("can be constructed directly via new", async () => {
+		const ui = new NoOpUIProvider();
+		await expect(ui.dialog("Title", "Body")).resolves.toBeUndefined();
+		await expect(ui.confirm("Title", "Body")).resolves.toBe(false);
+		await expect(ui.input("Title")).resolves.toBeUndefined();
+		await expect(ui.select("Title", ["a"])).resolves.toBeUndefined();
+		expect(() => ui.notify("msg")).not.toThrow();
+	});
+
+	test("instanceof NoOpUIProvider is true for direct construction", () => {
+		const ui = new NoOpUIProvider();
+		expect(ui instanceof NoOpUIProvider).toBe(true);
+	});
+
+	test("instanceof NoOpUIProvider is true for factory creation", () => {
+		const ui = createNoOpUIProvider();
+		expect(ui instanceof NoOpUIProvider).toBe(true);
+	});
+
+	test("instanceof NoOpUIProvider is true for namespace factory creation", () => {
+		const ui = UIProvider.noOp();
+		expect(ui instanceof NoOpUIProvider).toBe(true);
 	});
 });

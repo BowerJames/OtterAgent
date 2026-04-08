@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { ExtensionUIResponse, RpcOutboundMessage, RpcTransport } from "../rpc/types.js";
 import { UIProvider } from "./index.js";
-import { createRpcUIProvider } from "./rpc-ui-provider.js";
+import { RpcUIProvider, createRpcUIProvider } from "./rpc-ui-provider.js";
 
 // ─── Test Helpers ─────────────────────────────────────────────────────
 
@@ -294,5 +294,38 @@ describe("UIProvider.rpc()", () => {
 			confirmed: true,
 		} as ExtensionUIResponse);
 		await expect(confirmPromise).resolves.toBe(true);
+	});
+});
+
+// ─── RpcUIProvider — direct construction & instanceof ────────────────────────
+
+describe("RpcUIProvider — direct construction", () => {
+	test("can be constructed directly via new", async () => {
+		const transport = createMockTransport();
+		const ui = new RpcUIProvider(transport);
+
+		// dialog sends a request over the transport
+		const dialogPromise = ui.dialog("Title", "Body");
+		const req = getUIRequests(transport)[0] as { id: string };
+		ui.resolveResponse({ type: "extension_ui_response", id: req.id } as ExtensionUIResponse);
+		await expect(dialogPromise).resolves.toBeUndefined();
+	});
+
+	test("instanceof RpcUIProvider is true for direct construction", () => {
+		const transport = createMockTransport();
+		const ui = new RpcUIProvider(transport);
+		expect(ui instanceof RpcUIProvider).toBe(true);
+	});
+
+	test("factory result is instanceof RpcUIProvider", () => {
+		const transport = createMockTransport();
+		const { uiProvider } = createRpcUIProvider(transport);
+		expect(uiProvider instanceof RpcUIProvider).toBe(true);
+	});
+
+	test("namespace factory result is instanceof RpcUIProvider", () => {
+		const transport = createMockTransport();
+		const { uiProvider } = UIProvider.rpc(transport);
+		expect(uiProvider instanceof RpcUIProvider).toBe(true);
 	});
 });

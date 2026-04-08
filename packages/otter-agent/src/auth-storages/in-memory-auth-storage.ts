@@ -1,6 +1,6 @@
 import type { AuthStorage } from "../interfaces/auth-storage.js";
 
-class InMemoryAuthStorage implements AuthStorage {
+export class InMemoryAuthStorage implements AuthStorage {
 	private readonly keys: ReadonlyMap<string, string>;
 
 	constructor(keys: Record<string, string> = {}) {
@@ -20,6 +20,6 @@ class InMemoryAuthStorage implements AuthStorage {
  * @param keys - Optional map of provider identifier to API key
  *   (e.g., `{ anthropic: "sk-ant-...", openai: "sk-..." }`).
  */
-export function createInMemoryAuthStorage(keys?: Record<string, string>): AuthStorage {
+export function createInMemoryAuthStorage(keys?: Record<string, string>): InMemoryAuthStorage {
 	return new InMemoryAuthStorage(keys);
 }

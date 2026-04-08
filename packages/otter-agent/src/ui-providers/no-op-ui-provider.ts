@@ -1,6 +1,6 @@
 import type { UIProvider } from "../interfaces/ui-provider.js";
 
-class NoOpUIProvider implements UIProvider {
+export class NoOpUIProvider implements UIProvider {
 	async dialog(_title: string, _body: string): Promise<void> {}
 
 	async confirm(_title: string, _body: string): Promise<boolean> {
@@ -28,6 +28,6 @@ class NoOpUIProvider implements UIProvider {
  * - `select` returns `undefined`
  * - `notify` is a no-op
  */
-export function createNoOpUIProvider(): UIProvider {
+export function createNoOpUIProvider(): NoOpUIProvider {
 	return new NoOpUIProvider();
 }
