@@ -206,6 +206,10 @@ export class SqliteSessionManager implements SessionManager {
 		return this.insert({ type: "label", id, label, targetEntryId });
 	}
 
+	getEntries(): Entry[] {
+		return this.loadEntries();
+	}
+
 	buildSessionContext(): SessionContext {
 		this.assertNotClosed();
 		const entries = this.loadEntries();

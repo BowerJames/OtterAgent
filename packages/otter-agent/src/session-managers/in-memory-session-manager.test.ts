@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
+import type { ReadonlySessionManager } from "../interfaces/session-manager.js";
 import { COMPACTION_SUMMARY_PREFIX, COMPACTION_SUMMARY_SUFFIX } from "../session/messages.js";
 import {
 	InMemorySessionManager,
@@ -367,6 +368,82 @@ describe("EntryId uniqueness", () => {
 		];
 		const unique = new Set(ids);
 		expect(unique.size).toBe(ids.length);
+	});
+});
+
+// ─── getEntries ──────────────────────────────────────────────────────────────
+
+describe("getEntries", () => {
+	test("returns an empty array for a new session", () => {
+		const sm = createInMemorySessionManager();
+		expect(sm.getEntries()).toEqual([]);
+	});
+
+	test("returns all entries in append order", () => {
+		const sm = createInMemorySessionManager();
+		const msgId = sm.appendMessage(makeUserMessage("hello"));
+		sm.appendCustomEntry("ext-1", { state: true });
+		sm.appendModelChange({ provider: "anthropic", modelId: "claude-opus" }, "high");
+		sm.appendThinkingLevelChange("off");
+		sm.compact("summary", msgId, 100);
+		sm.appendLabel("important", msgId);
+		sm.appendCustomMessageEntry("ext-2", "visible", true);
+
+		const entries = sm.getEntries();
+		expect(entries).toHaveLength(7);
+		expect(entries[0].type).toBe("message");
+		expect(entries[1].type).toBe("customEntry");
+		expect(entries[2].type).toBe("modelChange");
+		expect(entries[3].type).toBe("thinkingLevelChange");
+		expect(entries[4].type).toBe("compaction");
+		expect(entries[5].type).toBe("label");
+		expect(entries[6].type).toBe("customMessage");
+	});
+
+	test("returns a shallow copy — mutating the returned array does not affect internal state", () => {
+		const sm = createInMemorySessionManager();
+		sm.appendMessage(makeUserMessage("keep"));
+		const entries = sm.getEntries();
+		entries.push({ type: "label", id: "fake", label: "injected", targetEntryId: "x" });
+		expect(sm.getEntries()).toHaveLength(1);
+	});
+
+	test("customEntry entries are included (unlike buildSessionContext messages)", () => {
+		const sm = createInMemorySessionManager();
+		sm.appendMessage(makeUserMessage("visible"));
+		sm.appendCustomEntry("my-ext", { key: "value" });
+
+		const entries = sm.getEntries();
+		expect(entries).toHaveLength(2);
+		expect(entries[1].type).toBe("customEntry");
+		if (entries[1].type === "customEntry") {
+			expect(entries[1].customType).toBe("my-ext");
+			expect(entries[1].data).toEqual({ key: "value" });
+		}
+	});
+
+	test("entries remain accessible after compaction", () => {
+		const sm = createInMemorySessionManager();
+		sm.appendMessage(makeUserMessage("old"));
+		const keepId = sm.appendMessage(makeUserMessage("keep"));
+		sm.compact("summary", keepId);
+
+		const entries = sm.getEntries();
+		// All 3 entries still present: 2 messages + 1 compaction
+		expect(entries).toHaveLength(3);
+		expect(entries[0].type).toBe("message");
+		expect(entries[1].type).toBe("message");
+		expect(entries[2].type).toBe("compaction");
+	});
+
+	test("available via ReadonlySessionManager", () => {
+		const sm = createInMemorySessionManager();
+		sm.appendCustomEntry("ext", { persisted: true });
+
+		const readonly: ReadonlySessionManager = sm;
+		const entries = readonly.getEntries();
+		expect(entries).toHaveLength(1);
+		expect(entries[0].type).toBe("customEntry");
 	});
 });
 

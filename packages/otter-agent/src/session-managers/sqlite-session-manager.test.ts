@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
+import type { ReadonlySessionManager } from "../interfaces/session-manager.js";
 import { SessionManager } from "./index.js";
 import { SqliteSessionManager, createSqliteSessionManager } from "./sqlite-session-manager.js";
 
@@ -414,6 +415,107 @@ describe("SessionManager.sqlite()", () => {
 		expect(typeof sm2.appendMessage).toBe("function");
 		sm1.close();
 		sm2.close();
+	});
+});
+
+// ─── getEntries ──────────────────────────────────────────────────────────────
+
+describe("getEntries", () => {
+	test("returns an empty array for a new session", () => {
+		const sm = createSm();
+		expect(sm.getEntries()).toEqual([]);
+		sm.close();
+	});
+
+	test("returns all entries in append order", () => {
+		const sm = createSm();
+		const msgId = sm.appendMessage(makeUserMessage("hello"));
+		sm.appendCustomEntry("ext-1", { state: true });
+		sm.appendModelChange({ provider: "anthropic", modelId: "claude-opus" }, "high");
+		sm.appendThinkingLevelChange("off");
+		sm.compact("summary", msgId, 100);
+		sm.appendLabel("important", msgId);
+		sm.appendCustomMessageEntry("ext-2", "visible", true);
+
+		const entries = sm.getEntries();
+		expect(entries).toHaveLength(7);
+		expect(entries[0].type).toBe("message");
+		expect(entries[1].type).toBe("customEntry");
+		expect(entries[2].type).toBe("modelChange");
+		expect(entries[3].type).toBe("thinkingLevelChange");
+		expect(entries[4].type).toBe("compaction");
+		expect(entries[5].type).toBe("label");
+		expect(entries[6].type).toBe("customMessage");
+		sm.close();
+	});
+
+	test("entries persist across close/reopen", () => {
+		const path = dbPath();
+		const sessionId = "getEntries-persist";
+
+		const sm1 = new SqliteSessionManager({ dbPath: path, sessionId });
+		sm1.appendMessage(makeUserMessage("survives"));
+		sm1.appendCustomEntry("ext", { data: 42 });
+		sm1.close();
+
+		const sm2 = new SqliteSessionManager({ dbPath: path, sessionId });
+		const entries = sm2.getEntries();
+		expect(entries).toHaveLength(2);
+		expect(entries[0].type).toBe("message");
+		expect(entries[1].type).toBe("customEntry");
+		if (entries[1].type === "customEntry") {
+			expect(entries[1].data).toEqual({ data: 42 });
+		}
+		sm2.close();
+	});
+
+	test("customEntry entries are included", () => {
+		const sm = createSm();
+		sm.appendMessage(makeUserMessage("visible"));
+		sm.appendCustomEntry("my-ext", { key: "value" });
+
+		const entries = sm.getEntries();
+		expect(entries).toHaveLength(2);
+		expect(entries[1].type).toBe("customEntry");
+		if (entries[1].type === "customEntry") {
+			expect(entries[1].customType).toBe("my-ext");
+			expect(entries[1].data).toEqual({ key: "value" });
+		}
+		sm.close();
+	});
+
+	test("throws after close", () => {
+		const sm = createSm();
+		sm.close();
+		expect(() => sm.getEntries()).toThrow("closed");
+	});
+
+	test("session isolation — entries from one session do not leak", () => {
+		const path = dbPath();
+		const smA = new SqliteSessionManager({ dbPath: path, sessionId: "iso-A" });
+		const smB = new SqliteSessionManager({ dbPath: path, sessionId: "iso-B" });
+
+		smA.appendMessage(makeUserMessage("only in A"));
+		smB.appendMessage(makeUserMessage("only in B"));
+
+		expect(smA.getEntries()).toHaveLength(1);
+		expect(smA.getEntries()[0].type).toBe("message");
+		expect(smB.getEntries()).toHaveLength(1);
+		expect(smB.getEntries()[0].type).toBe("message");
+
+		smA.close();
+		smB.close();
+	});
+
+	test("available via ReadonlySessionManager", () => {
+		const sm = createSm();
+		sm.appendCustomEntry("ext", { persisted: true });
+
+		const readonly: ReadonlySessionManager = sm;
+		const entries = readonly.getEntries();
+		expect(entries).toHaveLength(1);
+		expect(entries[0].type).toBe("customEntry");
+		sm.close();
 	});
 });
 

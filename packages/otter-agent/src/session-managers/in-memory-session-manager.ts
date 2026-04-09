@@ -76,6 +76,10 @@ export class InMemorySessionManager implements SessionManager {
 		return id;
 	}
 
+	getEntries(): Entry[] {
+		return [...this.entries];
+	}
+
 	buildSessionContext(): SessionContext {
 		// Find the latest compaction entry.
 		let latestCompaction: Extract<Entry, { type: "compaction" }> | undefined;
