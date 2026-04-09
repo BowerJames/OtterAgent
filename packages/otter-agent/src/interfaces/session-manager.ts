@@ -180,6 +180,21 @@ export interface SessionManager {
 	 * @returns The unique ID of the label entry.
 	 */
 	appendLabel(label: string, targetEntryId: EntryId): EntryId;
+
+	/**
+	 * Return all entries for this session in append order.
+	 *
+	 * Unlike {@link buildSessionContext}, which filters and transforms entries
+	 * into LLM-ready messages, this returns every entry verbatim — including
+	 * metadata entries, custom entries, labels, and compaction markers.
+	 *
+	 * Useful for extensions that persist state via {@link appendCustomEntry}
+	 * and need to reconstruct it on reload.
+	 *
+	 * @returns A read-only snapshot of all entries. Callers must not mutate
+	 *   the returned array or its elements.
+	 */
+	getEntries(): Entry[];
 }
 
 /**
@@ -189,4 +204,4 @@ export interface SessionManager {
  * mutation of session state. Extensions should use the ExtensionsAPI
  * methods (sendMessage, appendEntry, etc.) to write to the session.
  */
-export type ReadonlySessionManager = Pick<SessionManager, "buildSessionContext">;
+export type ReadonlySessionManager = Pick<SessionManager, "buildSessionContext" | "getEntries">;
