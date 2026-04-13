@@ -200,33 +200,35 @@ describe("loadExtensionsFromConfigFiles", () => {
 		expect(extensions).toEqual([]);
 	});
 
-	test("throws on a bad config file", async () => {
-		await expect(loadExtensionsFromConfigFiles([badJsonConfig])).rejects.toThrow(
-			ExtensionConfigFileError,
-		);
+	test("skips a bad config file and returns empty array", async () => {
+		const extensions = await loadExtensionsFromConfigFiles([badJsonConfig]);
+		expect(extensions).toEqual([]);
 	});
 
-	test("throws on a template with no default export", async () => {
-		await expect(loadExtensionsFromConfigFiles([noExportRefConfig])).rejects.toThrow(
-			ExtensionLoadError,
-		);
+	test("skips a template with no default export and returns empty array", async () => {
+		const extensions = await loadExtensionsFromConfigFiles([noExportRefConfig]);
+		expect(extensions).toEqual([]);
 	});
 
-	test("throws on a non-existent template path", async () => {
-		await expect(loadExtensionsFromConfigFiles([nonExistentPathConfig])).rejects.toThrow(
-			ExtensionLoadError,
-		);
+	test("skips a non-existent template path and returns empty array", async () => {
+		const extensions = await loadExtensionsFromConfigFiles([nonExistentPathConfig]);
+		expect(extensions).toEqual([]);
 	});
 
-	test("throws on a config validation failure", async () => {
-		await expect(loadExtensionsFromConfigFiles([invalidConfigJson])).rejects.toThrow(
-			ExtensionConfigValidationError,
-		);
+	test("skips a config validation failure and returns empty array", async () => {
+		const extensions = await loadExtensionsFromConfigFiles([invalidConfigJson]);
+		expect(extensions).toEqual([]);
 	});
 
-	test("throws on the first bad extension even when valid ones are also listed", async () => {
-		await expect(loadExtensionsFromConfigFiles([badJsonConfig, validJsonConfig])).rejects.toThrow(
-			ExtensionConfigFileError,
-		);
+	test("skips bad extension and returns only valid ones", async () => {
+		const extensions = await loadExtensionsFromConfigFiles([badJsonConfig, validJsonConfig]);
+		expect(extensions.length).toBe(1);
+		expect(typeof extensions[0]).toBe("function");
+	});
+
+	test("skips extension with validation failure and returns valid ones", async () => {
+		const extensions = await loadExtensionsFromConfigFiles([invalidConfigJson, validJsonConfig]);
+		expect(extensions.length).toBe(1);
+		expect(typeof extensions[0]).toBe("function");
 	});
 });

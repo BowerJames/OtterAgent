@@ -1,6 +1,7 @@
 import type { Static, TSchema } from "@sinclair/typebox";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import type { ComponentTemplate } from "../interfaces/component-template.js";
+import { deepMerge } from "../utils/deep-merge.js";
 
 /**
  * Error thrown when component config validation fails.
@@ -76,31 +77,4 @@ function mergeAndValidate<TConfig extends TSchema, TInstance>(
 	}
 
 	return merged;
-}
-
-function deepMerge(target: unknown, source: unknown): unknown {
-	if (typeof source !== "object" || source === null || Array.isArray(source)) {
-		return source;
-	}
-	if (typeof target !== "object" || target === null || Array.isArray(target)) {
-		return source;
-	}
-	const result = { ...target };
-	for (const key of Object.keys(source as Record<string, unknown>)) {
-		const sourceVal = (source as Record<string, unknown>)[key];
-		const targetVal = (target as Record<string, unknown>)[key];
-		if (
-			typeof sourceVal === "object" &&
-			sourceVal !== null &&
-			!Array.isArray(sourceVal) &&
-			typeof targetVal === "object" &&
-			targetVal !== null &&
-			!Array.isArray(targetVal)
-		) {
-			(result as Record<string, unknown>)[key] = deepMerge(targetVal, sourceVal);
-		} else {
-			(result as Record<string, unknown>)[key] = sourceVal;
-		}
-	}
-	return result;
 }

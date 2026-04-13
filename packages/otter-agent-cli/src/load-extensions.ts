@@ -121,23 +121,36 @@ export async function loadExtensionTemplate(
  * 2. Load the ExtensionTemplate from the template file
  * 3. Validate the config against the template's schema and build the Extension
  *
- * Errors are **fatal**: any failure immediately throws and halts the process.
+ * Errors are **non-fatal**: a warning is logged to stderr and the extension
+ * is skipped. Successfully loaded extensions are returned.
  *
  * @param configPaths - Array of paths to extension config files.
- * @returns Array of built Extension functions.
- * @throws {ExtensionConfigFileError} If any config file is invalid.
- * @throws {ExtensionLoadError} If any template module cannot be loaded.
- * @throws {ExtensionConfigValidationError} If any config validation fails.
+ * @returns Array of successfully built Extension functions.
  */
 export async function loadExtensionsFromConfigFiles(configPaths: string[]): Promise<Extension[]> {
 	const extensions: Extension[] = [];
 
 	for (const configPath of configPaths) {
-		const configEntry = parseExtensionConfigFile(configPath);
-		const configDir = dirname(configPath);
-		const template = await loadExtensionTemplate(configEntry.path, configDir);
-		const extension = validateExtensionConfig(template, configEntry.config);
-		extensions.push(extension);
+		try {
+			const configEntry = parseExtensionConfigFile(configPath);
+			const configDir = dirname(configPath);
+			const template = await loadExtensionTemplate(configEntry.path, configDir);
+			const extension = validateExtensionConfig(template, configEntry.config);
+			extensions.push(extension);
+		} catch (err) {
+			const label =
+				err instanceof ExtensionConfigFileError
+					? `Config file "${configPath}"`
+					: err instanceof ExtensionLoadError
+						? `Extension "${configPath}"`
+						: `Extension "${configPath}"`;
+
+			if (err instanceof ExtensionConfigValidationError) {
+				console.warn(`Warning: ${label} — config validation failed:\n${err.errors.join("\n")}`);
+			} else {
+				console.warn(`Warning: ${label} — ${err instanceof Error ? err.message : String(err)}`);
+			}
+		}
 	}
 
 	return extensions;
