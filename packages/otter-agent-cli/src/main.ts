@@ -87,7 +87,7 @@ export async function main(argv: string[]): Promise<void> {
 	// Resolve the model from CLI flags before creating the session.
 	const model = resolveModelFromArgs(args.provider, args.model, authStorage);
 
-	// Load extensions from config files (fatal: errors throw).
+	// Load extensions from config files (non-fatal: errors are logged and skipped).
 	const extensions = await loadExtensionsFromConfigFiles(args.extensions);
 
 	await runRpcMode({
