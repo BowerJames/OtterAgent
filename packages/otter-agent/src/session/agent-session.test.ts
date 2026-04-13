@@ -476,6 +476,96 @@ describe("AgentSession", () => {
 		await session.dispose();
 	});
 
+	test("onComplete callback receives summary via ExtensionContext.compact", async () => {
+		const sm = createMockSessionManager();
+		const session = new AgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+		});
+
+		const onComplete = mock(() => {});
+		const ext: Extension = (api) =>
+			api.on("session_start", (_event, ctx) => {
+				ctx.compact({ onComplete });
+			});
+
+		await session.loadExtensions([ext]);
+		// session_start fires compact as fire-and-forget — wait a tick for it to resolve
+		await Bun.sleep(50);
+
+		expect(onComplete).toHaveBeenCalledTimes(1);
+		expect(onComplete).toHaveBeenCalledWith({ summary: undefined });
+
+		await session.dispose();
+	});
+
+	test("onComplete callback receives extension-provided summary via ExtensionContext.compact", async () => {
+		const sm = createMockSessionManager();
+		const session = new AgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+		});
+
+		const onComplete = mock(() => {});
+		const ext: Extension = (api) => {
+			api.on("session_before_compact", () => {
+				return { compaction: { summary: "ext summary" } };
+			});
+			api.on("session_start", (_event, ctx) => {
+				ctx.compact({ onComplete });
+			});
+		};
+
+		await session.loadExtensions([ext]);
+		await Bun.sleep(50);
+
+		expect(onComplete).toHaveBeenCalledTimes(1);
+		expect(onComplete).toHaveBeenCalledWith({ summary: "ext summary" });
+
+		await session.dispose();
+	});
+
+	test("onError callback fires when compact fails via ExtensionContext.compact", async () => {
+		const { mock: mockFn } = await import("bun:test");
+		const onError = mockFn(() => {});
+		const sm: SessionManager = {
+			appendMessage: mockFn(() => "1"),
+			buildSessionContext: mockFn(() => {
+				throw new Error("session corrupted");
+			}),
+			compact: mockFn(() => "1"),
+			appendCustomEntry: mockFn(() => "1"),
+			appendCustomMessageEntry: mockFn(() => "1"),
+			appendModelChange: mockFn(() => "1"),
+			appendThinkingLevelChange: mockFn(() => "1"),
+			appendLabel: mockFn(() => "1"),
+		};
+		const session = new AgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+		});
+
+		const ext: Extension = (api) =>
+			api.on("session_start", (_event, ctx) => {
+				ctx.compact({ onError });
+			});
+
+		await session.loadExtensions([ext]);
+		await Bun.sleep(50);
+
+		expect(onError).toHaveBeenCalledTimes(1);
+		expect(onError.mock.calls[0][0]).toBeInstanceOf(Error);
+		expect(onError.mock.calls[0][0].message).toBe("session corrupted");
+
+		await session.dispose();
+	});
+
 	test("messages option seeds agent with prior conversation", async () => {
 		const messages: AgentMessage[] = [
 			{ role: "user", content: [{ type: "text", text: "Hello" }], timestamp: 1 },
