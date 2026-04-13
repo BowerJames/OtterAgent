@@ -22,5 +22,9 @@ export {
 export type { ContextInjectorConfig } from "./built-ins/index.js";
 
 // Re-export core types consumers need
-export type { Extension, ExtensionTemplate } from "@otter-agent/core";
-export type { ExtensionConfigValidationError } from "@otter-agent/core";
+export type { Extension, ComponentTemplate } from "@otter-agent/core";
+export {
+	ComponentConfigValidationError,
+	validateComponentConfig,
+	validateComponentConfigOnly,
+} from "@otter-agent/core";

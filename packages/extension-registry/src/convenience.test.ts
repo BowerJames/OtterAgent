@@ -53,7 +53,7 @@ describe("convenience functions", () => {
 		it("throws on invalid config", () => {
 			expect(() =>
 				buildExtension("context-injector", { content: 42 as unknown as string }),
-			).toThrow("Extension config validation failed");
+			).toThrow("Component config validation failed");
 		});
 	});
 });

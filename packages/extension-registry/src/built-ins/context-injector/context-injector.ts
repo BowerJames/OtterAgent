@@ -1,9 +1,10 @@
-import type { ExtensionTemplate } from "@otter-agent/core";
+import type { ComponentTemplate, Extension } from "@otter-agent/core";
 /**
  * Context Injector — built-in extension template that appends custom
  * text to the system prompt on every agent turn.
  *
- * This serves as the canonical example of an ExtensionTemplate.
+ * This serves as the canonical example of a ComponentTemplate that
+ * produces an Extension.
  */
 import { Type } from "@sinclair/typebox";
 import type { Static } from "@sinclair/typebox";
@@ -30,18 +31,21 @@ export type ContextInjectorConfig = Static<typeof ContextInjectorConfigSchema>;
  *
  * @example
  * ```ts
- * import { validateExtensionConfig } from "@otter-agent/core";
+ * import { validateComponentConfig } from "@otter-agent/core";
  * import { ContextInjectorTemplate } from "@otter-agent/extension-registry";
  *
- * const extension = validateExtensionConfig(ContextInjectorTemplate, {
+ * const extension = validateComponentConfig(ContextInjectorTemplate, {
  *   content: "Always respond in French.",
  * });
  * ```
  */
-export const ContextInjectorTemplate: ExtensionTemplate<typeof ContextInjectorConfigSchema> = {
+export const ContextInjectorTemplate: ComponentTemplate<
+	typeof ContextInjectorConfigSchema,
+	Extension
+> = {
 	configSchema: () => ContextInjectorConfigSchema,
 	defaultConfig: () => ({ content: "" }),
-	buildExtension: (config: ContextInjectorConfig) => (api) => {
+	build: (config: ContextInjectorConfig) => (api) => {
 		api.on("before_agent_start", (event) => ({
 			systemPrompt: `${event.systemPrompt}\n\n${config.content}`,
 		}));

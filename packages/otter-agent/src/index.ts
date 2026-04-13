@@ -5,7 +5,6 @@ export type {
 	ComponentTemplate,
 	Entry,
 	EntryId,
-	ExtensionTemplate,
 	ReadonlySessionManager,
 	SessionContext,
 	SessionManagerTemplate,
@@ -121,9 +120,6 @@ export {
 	ComponentConfigValidationError,
 	validateComponentConfig,
 	validateComponentConfigOnly,
-	ExtensionConfigValidationError,
-	validateExtensionConfig,
-	validateExtensionConfigOnly,
 } from "./extension-core/index.js";
 
 // AgentSession

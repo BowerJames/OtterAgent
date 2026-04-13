@@ -1,13 +1,13 @@
-import type { ExtensionTemplate } from "@otter-agent/core";
+import type { ComponentTemplate, Extension } from "@otter-agent/core";
 import { Type } from "@sinclair/typebox";
 
 /**
- * Minimal valid ExtensionTemplate for testing.
+ * Minimal valid ComponentTemplate<Extension> for testing.
  *
  * Config schema: { apiKey: string, maxRetries: number }
  * Defaults: { apiKey: "default-key", maxRetries: 3 }
  */
-const template: ExtensionTemplate = {
+const template: ComponentTemplate = {
 	configSchema: () =>
 		Type.Object({
 			apiKey: Type.String(),
@@ -17,8 +17,8 @@ const template: ExtensionTemplate = {
 		apiKey: "default-key",
 		maxRetries: 3,
 	}),
-	buildExtension: (config) => {
-		return (_api) => {
+	build: (config) => {
+		return (_api: Parameters<Extension>[0]) => {
 			// Extension does nothing — just for testing
 			void config;
 		};
