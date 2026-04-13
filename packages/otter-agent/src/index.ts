@@ -1,10 +1,14 @@
 // OtterAgent interfaces
 export type {
+	AgentEnvironmentTemplate,
+	AuthStorageTemplate,
+	ComponentTemplate,
 	Entry,
 	EntryId,
 	ExtensionTemplate,
 	ReadonlySessionManager,
 	SessionContext,
+	SessionManagerTemplate,
 	SkillDefinition,
 	SkillSupportedAgentEnvironment,
 	ToolDefinition,
@@ -18,6 +22,8 @@ export {
 	AgentEnvironment,
 	isJustBashAgentEnvironment,
 	JustBashAgentEnvironment,
+	JustBashAgentEnvironmentOptionsSchema,
+	JustBashAgentEnvironmentTemplate,
 	type JustBashAgentEnvironmentOptions,
 	type JustBashToolName,
 } from "./environments/index.js";
@@ -37,7 +43,11 @@ export {
 export {
 	AuthStorage,
 	InMemoryAuthStorage,
+	InMemoryAuthStorageOptionsSchema,
+	InMemoryAuthStorageTemplate,
 	SqliteAuthStorage,
+	SqliteAuthStorageOptionsSchema,
+	SqliteAuthStorageTemplate,
 	createInMemoryAuthStorage,
 	createSqliteAuthStorage,
 	type SqliteAuthStorageOptions,
@@ -48,10 +58,14 @@ export {
 // (namespace with factory methods) via declaration merging in session-managers/index.ts.
 export {
 	InMemorySessionManager,
+	InMemorySessionManagerOptionsSchema,
+	InMemorySessionManagerTemplate,
 	createInMemorySessionManager,
 	createSqliteSessionManager,
 	SessionManager,
 	SqliteSessionManager,
+	SqliteSessionManagerOptionsSchema,
+	SqliteSessionManagerTemplate,
 	type SqliteSessionManagerOptions,
 } from "./session-managers/index.js";
 
@@ -104,6 +118,9 @@ export type {
 } from "./extension-core/index.js";
 export { createEventBus, ExtensionRunner } from "./extension-core/index.js";
 export {
+	ComponentConfigValidationError,
+	validateComponentConfig,
+	validateComponentConfigOnly,
 	ExtensionConfigValidationError,
 	validateExtensionConfig,
 	validateExtensionConfigOnly,

@@ -1,66 +1,65 @@
 import type { Static, TSchema } from "@sinclair/typebox";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
-import type { ExtensionTemplate } from "../interfaces/extension-template.js";
+import type { ComponentTemplate } from "../interfaces/component-template.js";
 import { deepMerge } from "../utils/deep-merge.js";
-import type { Extension } from "./extension.js";
 
 /**
- * Error thrown when extension config validation fails.
+ * Error thrown when component config validation fails.
  */
-export class ExtensionConfigValidationError extends Error {
+export class ComponentConfigValidationError extends Error {
 	constructor(
-		public readonly template: ExtensionTemplate,
+		public readonly template: ComponentTemplate,
 		public readonly errors: string[],
 	) {
-		super(`Extension config validation failed:\n${errors.join("\n")}`);
-		this.name = "ExtensionConfigValidationError";
+		super(`Component config validation failed:\n${errors.join("\n")}`);
+		this.name = "ComponentConfigValidationError";
 	}
 }
 
 /**
  * Validate raw config against a template's schema, merge with defaults,
- * and build the extension.
+ * and build the component instance.
  *
  * Workflow:
  * 1. Start with `template.defaultConfig()`
  * 2. Deep-merge user-provided `rawConfig` on top
  * 3. Validate the merged result against `template.configSchema()`
- * 4. Call `template.buildExtension()` with the validated config
+ * 4. Call `template.build()` with the validated config
  *
- * @param template - The extension template.
+ * @param template - The component template.
  * @param rawConfig - User-provided config values. Deep-merged with defaults.
- * @returns A built Extension ready for use with AgentSession.
- * @throws {ExtensionConfigValidationError} If validation fails.
+ * @returns A built component instance.
+ * @throws {ComponentConfigValidationError} If validation fails.
  */
-export function validateExtensionConfig<TConfig extends TSchema>(
-	template: ExtensionTemplate<TConfig>,
+export function validateComponentConfig<TConfig extends TSchema, TInstance>(
+	template: ComponentTemplate<TConfig, TInstance>,
 	rawConfig: Partial<Static<TConfig>> = {},
-): Extension {
+): TInstance {
 	const merged = mergeAndValidate(template, rawConfig);
-	return template.buildExtension(merged);
+	return template.build(merged);
 }
 
 /**
  * Validate raw config against a template's schema and return the
- * validated config without building the extension.
+ * validated config without building the component.
  *
  * Useful when the caller wants to inspect validated config before
- * passing it to `buildExtension()` manually.
+ * passing it to `build()` manually.
  *
- * @param template - The extension template.
+ * @param template - The component template.
  * @param rawConfig - User-provided config values. Deep-merged with defaults.
  * @returns The validated config matching the schema.
- * @throws {ExtensionConfigValidationError} If validation fails.
+ * @throws {ComponentConfigValidationError} If validation fails.
  */
-export function validateExtensionConfigOnly<TConfig extends TSchema>(
-	template: ExtensionTemplate<TConfig>,
+export function validateComponentConfigOnly<TConfig extends TSchema, TInstance>(
+	template: ComponentTemplate<TConfig, TInstance>,
 	rawConfig: Partial<Static<TConfig>> = {},
 ): Static<TConfig> {
 	return mergeAndValidate(template, rawConfig);
 }
 
-function mergeAndValidate<TConfig extends TSchema>(
-	template: ExtensionTemplate<TConfig>,
+function mergeAndValidate<TConfig extends TSchema, TInstance>(
+	template: ComponentTemplate<TConfig, TInstance>,
 	rawConfig: Partial<Static<TConfig>>,
 ): Static<TConfig> {
 	const defaults = template.defaultConfig();
@@ -74,7 +73,7 @@ function mergeAndValidate<TConfig extends TSchema>(
 	const errors = [...compiler.Errors(merged)].map((e) => `${e.path}: ${e.message}`);
 
 	if (errors.length > 0) {
-		throw new ExtensionConfigValidationError(template, errors);
+		throw new ComponentConfigValidationError(template, errors);
 	}
 
 	return merged;

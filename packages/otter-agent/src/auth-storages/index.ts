@@ -6,10 +6,17 @@ import {
 	createSqliteAuthStorage,
 } from "./sqlite-auth-storage.js";
 
-export { createInMemoryAuthStorage, InMemoryAuthStorage } from "./in-memory-auth-storage.js";
+export {
+	createInMemoryAuthStorage,
+	InMemoryAuthStorage,
+	InMemoryAuthStorageOptionsSchema,
+	InMemoryAuthStorageTemplate,
+} from "./in-memory-auth-storage.js";
 export {
 	createSqliteAuthStorage,
 	SqliteAuthStorage,
+	SqliteAuthStorageOptionsSchema,
+	SqliteAuthStorageTemplate,
 	type SqliteAuthStorageOptions,
 } from "./sqlite-auth-storage.js";
 

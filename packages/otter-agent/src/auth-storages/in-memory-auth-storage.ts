@@ -1,4 +1,6 @@
+import { Type } from "@sinclair/typebox";
 import type { AuthStorage } from "../interfaces/auth-storage.js";
+import type { ComponentTemplate } from "../interfaces/component-template.js";
 
 export class InMemoryAuthStorage implements AuthStorage {
 	private readonly keys: ReadonlyMap<string, string>;
@@ -23,3 +25,25 @@ export class InMemoryAuthStorage implements AuthStorage {
 export function createInMemoryAuthStorage(keys?: Record<string, string>): InMemoryAuthStorage {
 	return new InMemoryAuthStorage(keys);
 }
+
+// ─── ComponentTemplate ────────────────────────────────────────────────────────
+
+/** TypeBox schema for {@link InMemoryAuthStorage} options. */
+export const InMemoryAuthStorageOptionsSchema = Type.Object({
+	/** Optional map of provider identifier to API key. */
+	keys: Type.Optional(Type.Record(Type.String(), Type.String())),
+});
+
+/**
+ * {@link ComponentTemplate} for {@link InMemoryAuthStorage}.
+ *
+ * Builds an in-memory auth storage seeded with an optional key map.
+ */
+export const InMemoryAuthStorageTemplate: ComponentTemplate<
+	typeof InMemoryAuthStorageOptionsSchema,
+	InMemoryAuthStorage
+> = {
+	configSchema: () => InMemoryAuthStorageOptionsSchema,
+	defaultConfig: () => ({}),
+	build: ({ keys }) => new InMemoryAuthStorage(keys),
+};

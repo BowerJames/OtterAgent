@@ -1,6 +1,13 @@
-import { AgentEnvironment, type AuthStorage, ModelRegistry } from "@otter-agent/core";
+import type { AgentEnvironment, AuthStorage, SessionManager } from "@otter-agent/core";
+import { ModelRegistry } from "@otter-agent/core";
 import { parseCliArgs, printHelp } from "./args.js";
 import { buildAuthStorageFromEnv } from "./auth.js";
+import {
+	ComponentConfigFileError,
+	ComponentConfigValidationError,
+	ComponentLoadError,
+	loadComponent,
+} from "./load-component.js";
 import { loadExtensionsFromConfigFiles } from "./load-extensions.js";
 import { runRpcMode } from "./rpc/rpc-mode.js";
 
@@ -22,6 +29,31 @@ function resolveModelFromArgs(provider: string, modelId: string, authStorage: Au
 	return model;
 }
 
+/**
+ * Load a component from a config file, exiting on any error.
+ *
+ * @param configPath - Path to the JSON or YAML config file.
+ * @param label - Human-readable label for error messages (e.g. "session manager").
+ */
+async function loadComponentOrExit<T>(configPath: string, label: string): Promise<T> {
+	try {
+		return await loadComponent<T>(configPath);
+	} catch (err) {
+		if (err instanceof ComponentConfigFileError) {
+			console.error(`Error: Failed to load ${label} config file "${configPath}": ${err.message}`);
+		} else if (err instanceof ComponentLoadError) {
+			console.error(`Error: Failed to load ${label} template: ${err.message}`);
+		} else if (err instanceof ComponentConfigValidationError) {
+			console.error(`Error: ${label} config validation failed:\n${err.errors.join("\n")}`);
+		} else {
+			console.error(
+				`Error: Unexpected failure loading ${label}: ${err instanceof Error ? err.message : String(err)}`,
+			);
+		}
+		process.exit(1);
+	}
+}
+
 export async function main(argv: string[]): Promise<void> {
 	const args = parseCliArgs(argv);
 
@@ -35,27 +67,33 @@ export async function main(argv: string[]): Promise<void> {
 		process.exit(0);
 	}
 
-	const apiKeyOverride = args.apiKey ? { provider: args.provider, apiKey: args.apiKey } : undefined;
+	// Load the three required components from their config files.
+	const [sessionManager, environment] = await Promise.all([
+		loadComponentOrExit<SessionManager>(args.sessionManagerConfig, "session manager"),
+		loadComponentOrExit<AgentEnvironment>(args.agentEnvironmentConfig, "agent environment"),
+	]);
 
-	const authStorage = buildAuthStorageFromEnv(apiKeyOverride);
+	// Auth storage: either loaded from a config file or built from env vars / --api-key.
+	let authStorage: AuthStorage;
+	if (args.authStorageConfig) {
+		authStorage = await loadComponentOrExit<AuthStorage>(args.authStorageConfig, "auth storage");
+	} else {
+		const apiKeyOverride = args.apiKey
+			? { provider: args.provider, apiKey: args.apiKey }
+			: undefined;
+		authStorage = buildAuthStorageFromEnv(apiKeyOverride);
+	}
 
 	// Resolve the model from CLI flags before creating the session.
-	// We need a temporary ModelRegistry here because createRpcSession requires a
-	// resolved Model<Api> object, not raw provider/modelId strings. createRpcSession
-	// constructs its own registry internally for session-context resolution — this one
-	// is only used for early CLI validation.
 	const model = resolveModelFromArgs(args.provider, args.model, authStorage);
 
-	const environment = AgentEnvironment.justBash({
-		cwd: args.cwd ?? process.cwd(),
-	});
-
-	// Load extensions from config files (non-fatal: errors are logged as warnings)
+	// Load extensions from config files (non-fatal: errors are logged and skipped).
 	const extensions = await loadExtensionsFromConfigFiles(args.extensions);
 
 	await runRpcMode({
 		authStorage,
 		environment,
+		sessionManager,
 		systemPrompt: args.systemPrompt ?? "You are a helpful AI assistant.",
 		model,
 		thinkingLevel: args.thinking,

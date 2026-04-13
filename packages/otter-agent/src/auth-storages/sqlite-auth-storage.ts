@@ -1,5 +1,7 @@
 import { Database } from "bun:sqlite";
+import { Type } from "@sinclair/typebox";
 import type { AuthStorage } from "../interfaces/auth-storage.js";
+import type { ComponentTemplate } from "../interfaces/component-template.js";
 
 // ─── Options ─────────────────────────────────────────────────────────────────
 
@@ -146,3 +148,29 @@ export class SqliteAuthStorage implements AuthStorage {
 export function createSqliteAuthStorage(options: SqliteAuthStorageOptions): SqliteAuthStorage {
 	return new SqliteAuthStorage(options);
 }
+
+// ─── ComponentTemplate ────────────────────────────────────────────────────────
+
+/** TypeBox schema for {@link SqliteAuthStorage} options. */
+export const SqliteAuthStorageOptionsSchema = Type.Object({
+	/** Path to the SQLite database file. Created if it doesn't exist. */
+	dbPath: Type.String({ minLength: 1 }),
+	/** Unique storage identifier. Keys are scoped to this ID. */
+	storageId: Type.String({ minLength: 1 }),
+	/** Optional table name. Defaults to "auth_keys". */
+	tableName: Type.Optional(Type.String({ minLength: 1 })),
+});
+
+/**
+ * {@link ComponentTemplate} for {@link SqliteAuthStorage}.
+ *
+ * Builds a SQLite-backed auth storage from a config file.
+ */
+export const SqliteAuthStorageTemplate: ComponentTemplate<
+	typeof SqliteAuthStorageOptionsSchema,
+	SqliteAuthStorage
+> = {
+	configSchema: () => SqliteAuthStorageOptionsSchema,
+	defaultConfig: () => ({ dbPath: "./auth.db", storageId: "default" }),
+	build: (config) => new SqliteAuthStorage(config),
+};

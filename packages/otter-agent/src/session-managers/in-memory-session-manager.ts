@@ -1,5 +1,7 @@
 import type { AgentMessage, ThinkingLevel } from "@mariozechner/pi-agent-core";
 import type { ImageContent, TextContent } from "@mariozechner/pi-ai";
+import { Type } from "@sinclair/typebox";
+import type { ComponentTemplate } from "../interfaces/component-template.js";
 import type {
 	Entry,
 	EntryId,
@@ -165,3 +167,22 @@ export class InMemorySessionManager implements SessionManager {
 export function createInMemorySessionManager(): InMemorySessionManager {
 	return new InMemorySessionManager();
 }
+
+// ─── ComponentTemplate ────────────────────────────────────────────────────────
+
+/** TypeBox schema for {@link InMemorySessionManager} options (no configuration needed). */
+export const InMemorySessionManagerOptionsSchema = Type.Object({});
+
+/**
+ * {@link ComponentTemplate} for {@link InMemorySessionManager}.
+ *
+ * No configuration is required. Suitable for testing and short-lived sessions.
+ */
+export const InMemorySessionManagerTemplate: ComponentTemplate<
+	typeof InMemorySessionManagerOptionsSchema,
+	InMemorySessionManager
+> = {
+	configSchema: () => InMemorySessionManagerOptionsSchema,
+	defaultConfig: () => ({}),
+	build: () => new InMemorySessionManager(),
+};

@@ -12,10 +12,14 @@ import {
 export {
 	createInMemorySessionManager,
 	InMemorySessionManager,
+	InMemorySessionManagerOptionsSchema,
+	InMemorySessionManagerTemplate,
 } from "./in-memory-session-manager.js";
 export {
 	createSqliteSessionManager,
 	SqliteSessionManager,
+	SqliteSessionManagerOptionsSchema,
+	SqliteSessionManagerTemplate,
 	type SqliteSessionManagerOptions,
 } from "./sqlite-session-manager.js";
 

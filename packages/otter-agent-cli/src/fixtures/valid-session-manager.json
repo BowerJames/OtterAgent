@@ -1,0 +1,6 @@
+{
+  "path": "./valid-session-manager.ts",
+  "config": {
+    "label": "test-session"
+  }
+}

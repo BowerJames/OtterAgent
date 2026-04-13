@@ -10,7 +10,10 @@ export interface ParsedArgs {
 	apiKey: string | undefined;
 	thinking: ThinkingLevel | undefined;
 	systemPrompt: string | undefined;
-	cwd: string | undefined;
+	sessionManagerConfig: string;
+	/** Provided via --auth-storage-config. When absent, env vars / --api-key are used. */
+	authStorageConfig: string | undefined;
+	agentEnvironmentConfig: string;
 	extensions: string[];
 	help: boolean;
 	version: boolean;
@@ -20,16 +23,18 @@ const HELP = `
 Usage: otter [options]
 
 Options:
-  --mode <mode>           Operation mode. Currently only "rpc" is supported.
-  --provider <name>       LLM provider (e.g. anthropic, openai, google). Required.
-  --model <id>            Model ID (e.g. claude-sonnet-4-5-20250514). Required.
-  --api-key <key>         API key for the provider. Overrides the environment variable.
-  --thinking <level>      Thinking level: off, minimal, low, medium, high, xhigh.
-  --system-prompt <text>  Base system prompt.
-  --cwd <path>            Working directory for the agent environment.
-  --extension, -e <path>  Load an extension config file (JSON or YAML). Can be repeated.
-  --help                  Show this help message.
-  --version               Print the version and exit.
+  --mode <mode>                    Operation mode. Currently only "rpc" is supported.
+  --provider <name>                LLM provider (e.g. anthropic, openai, google). Required.
+  --model <id>                     Model ID (e.g. claude-sonnet-4-5-20250514). Required.
+  --api-key <key>                  API key for the provider. Mutually exclusive with --auth-storage-config.
+  --thinking <level>               Thinking level: off, minimal, low, medium, high, xhigh.
+  --system-prompt <text>           Base system prompt.
+  --session-manager-config <path>  Session manager config file (JSON or YAML). Required.
+  --auth-storage-config <path>     Auth storage config file (JSON or YAML). Mutually exclusive with --api-key.
+  --agent-environment-config <path> Agent environment config file (JSON or YAML). Required.
+  --extension, -e <path>           Load an extension config file (JSON or YAML). Can be repeated.
+  --help                           Show this help message.
+  --version                        Print the version and exit.
 `.trim();
 
 /**
@@ -71,7 +76,9 @@ export function parseCliArgs(argv: string[]): ParsedArgs {
 			"api-key": { type: "string" },
 			thinking: { type: "string" },
 			"system-prompt": { type: "string" },
-			cwd: { type: "string" },
+			"session-manager-config": { type: "string" },
+			"auth-storage-config": { type: "string" },
+			"agent-environment-config": { type: "string" },
 			help: { type: "boolean", default: false },
 			version: { type: "boolean", default: false },
 		},
@@ -97,7 +104,7 @@ export function parseCliArgs(argv: string[]): ParsedArgs {
 	const help = (values.help as boolean | undefined) ?? false;
 	const version = (values.version as boolean | undefined) ?? false;
 
-	// --help and --version short-circuit without requiring --provider/--model.
+	// --help and --version short-circuit without requiring other flags.
 	if (help || version) {
 		return {
 			mode: "rpc",
@@ -106,7 +113,9 @@ export function parseCliArgs(argv: string[]): ParsedArgs {
 			apiKey: undefined,
 			thinking,
 			systemPrompt: values["system-prompt"] as string | undefined,
-			cwd: values.cwd as string | undefined,
+			sessionManagerConfig: "",
+			authStorageConfig: undefined,
+			agentEnvironmentConfig: "",
 			extensions,
 			help,
 			version,
@@ -115,6 +124,10 @@ export function parseCliArgs(argv: string[]): ParsedArgs {
 
 	const provider = values.provider as string | undefined;
 	const model = values.model as string | undefined;
+	const apiKey = values["api-key"] as string | undefined;
+	const authStorageConfig = values["auth-storage-config"] as string | undefined;
+	const sessionManagerConfig = values["session-manager-config"] as string | undefined;
+	const agentEnvironmentConfig = values["agent-environment-config"] as string | undefined;
 
 	if (!provider) {
 		console.error("Error: --provider is required.");
@@ -130,14 +143,38 @@ export function parseCliArgs(argv: string[]): ParsedArgs {
 		process.exit(1);
 	}
 
+	if (apiKey !== undefined && authStorageConfig !== undefined) {
+		console.error("Error: --api-key and --auth-storage-config are mutually exclusive.");
+		console.error(
+			"Use --api-key to pass a key directly, or --auth-storage-config to load from a config file.",
+		);
+		process.exit(1);
+	}
+
+	if (!sessionManagerConfig) {
+		console.error("Error: --session-manager-config is required.");
+		console.error("Use --session-manager-config <path> to specify a session manager config file.");
+		process.exit(1);
+	}
+
+	if (!agentEnvironmentConfig) {
+		console.error("Error: --agent-environment-config is required.");
+		console.error(
+			"Use --agent-environment-config <path> to specify an agent environment config file.",
+		);
+		process.exit(1);
+	}
+
 	return {
 		mode: "rpc",
 		provider,
 		model,
-		apiKey: values["api-key"] as string | undefined,
+		apiKey,
 		thinking,
 		systemPrompt: values["system-prompt"] as string | undefined,
-		cwd: values.cwd as string | undefined,
+		sessionManagerConfig,
+		authStorageConfig,
+		agentEnvironmentConfig,
 		extensions,
 		help: false,
 		version: false,
