@@ -2,7 +2,18 @@ import { describe, expect, test } from "bun:test";
 import { parseCliArgs } from "./args.js";
 
 describe("parseCliArgs", () => {
-	const baseArgs = ["--provider", "anthropic", "--model", "claude-sonnet-4-5-20250514"];
+	const baseArgs = [
+		"--provider",
+		"anthropic",
+		"--model",
+		"claude-sonnet-4-5-20250514",
+		"--session-manager-config",
+		"./sm.yaml",
+		"--auth-storage-config",
+		"./auth.yaml",
+		"--agent-environment-config",
+		"./env.yaml",
+	];
 
 	test("defaults to rpc mode", () => {
 		const args = parseCliArgs(baseArgs);
@@ -17,9 +28,22 @@ describe("parseCliArgs", () => {
 
 	test("exits when --provider is missing", async () => {
 		const cliPath = new URL("../dist/cli.js", import.meta.url).pathname;
-		const proc = Bun.spawn(["bun", "run", cliPath, "--model", "claude-sonnet-4-5-20250514"], {
-			stderr: "pipe",
-		});
+		const proc = Bun.spawn(
+			[
+				"bun",
+				"run",
+				cliPath,
+				"--model",
+				"claude-sonnet-4-5-20250514",
+				"--session-manager-config",
+				"./sm.yaml",
+				"--auth-storage-config",
+				"./auth.yaml",
+				"--agent-environment-config",
+				"./env.yaml",
+			],
+			{ stderr: "pipe" },
+		);
 		await proc.exited;
 		expect(proc.exitCode).toBe(1);
 		const stderr = await new Response(proc.stderr).text();
@@ -28,17 +52,119 @@ describe("parseCliArgs", () => {
 
 	test("exits when --model is missing", async () => {
 		const cliPath = new URL("../dist/cli.js", import.meta.url).pathname;
-		const proc = Bun.spawn(["bun", "run", cliPath, "--provider", "anthropic"], {
-			stderr: "pipe",
-		});
+		const proc = Bun.spawn(
+			[
+				"bun",
+				"run",
+				cliPath,
+				"--provider",
+				"anthropic",
+				"--session-manager-config",
+				"./sm.yaml",
+				"--auth-storage-config",
+				"./auth.yaml",
+				"--agent-environment-config",
+				"./env.yaml",
+			],
+			{ stderr: "pipe" },
+		);
 		await proc.exited;
 		expect(proc.exitCode).toBe(1);
 		const stderr = await new Response(proc.stderr).text();
 		expect(stderr).toContain("--model is required");
 	});
 
-	test("parses --api-key", () => {
-		const args = parseCliArgs([...baseArgs, "--api-key", "sk-test-key"]);
+	test("exits when --session-manager-config is missing", async () => {
+		const cliPath = new URL("../dist/cli.js", import.meta.url).pathname;
+		const proc = Bun.spawn(
+			[
+				"bun",
+				"run",
+				cliPath,
+				"--provider",
+				"anthropic",
+				"--model",
+				"claude-sonnet-4-5-20250514",
+				"--auth-storage-config",
+				"./auth.yaml",
+				"--agent-environment-config",
+				"./env.yaml",
+			],
+			{ stderr: "pipe" },
+		);
+		await proc.exited;
+		expect(proc.exitCode).toBe(1);
+		const stderr = await new Response(proc.stderr).text();
+		expect(stderr).toContain("--session-manager-config is required");
+	});
+
+	test("exits when --agent-environment-config is missing", async () => {
+		const cliPath = new URL("../dist/cli.js", import.meta.url).pathname;
+		const proc = Bun.spawn(
+			[
+				"bun",
+				"run",
+				cliPath,
+				"--provider",
+				"anthropic",
+				"--model",
+				"claude-sonnet-4-5-20250514",
+				"--session-manager-config",
+				"./sm.yaml",
+				"--auth-storage-config",
+				"./auth.yaml",
+			],
+			{ stderr: "pipe" },
+		);
+		await proc.exited;
+		expect(proc.exitCode).toBe(1);
+		const stderr = await new Response(proc.stderr).text();
+		expect(stderr).toContain("--agent-environment-config is required");
+	});
+
+	test("exits when --api-key and --auth-storage-config are both provided", async () => {
+		const cliPath = new URL("../dist/cli.js", import.meta.url).pathname;
+		const proc = Bun.spawn(
+			[
+				"bun",
+				"run",
+				cliPath,
+				"--provider",
+				"anthropic",
+				"--model",
+				"claude-sonnet-4-5-20250514",
+				"--api-key",
+				"sk-test",
+				"--session-manager-config",
+				"./sm.yaml",
+				"--auth-storage-config",
+				"./auth.yaml",
+				"--agent-environment-config",
+				"./env.yaml",
+			],
+			{ stderr: "pipe" },
+		);
+		await proc.exited;
+		expect(proc.exitCode).toBe(1);
+		const stderr = await new Response(proc.stderr).text();
+		expect(stderr).toContain("mutually exclusive");
+	});
+
+	test("parses --api-key (without --auth-storage-config)", () => {
+		// baseArgs includes --auth-storage-config, so use args without it
+		const argsWithoutAuthConfig = [
+			"--provider",
+			"anthropic",
+			"--model",
+			"claude-sonnet-4-5-20250514",
+			"--session-manager-config",
+			"./sm.yaml",
+			"--agent-environment-config",
+			"./env.yaml",
+			"--api-key",
+			"sk-test-key",
+		];
+		const args = parseCliArgs(argsWithoutAuthConfig);
 		expect(args.apiKey).toBe("sk-test-key");
 	});
 
@@ -60,9 +186,32 @@ describe("parseCliArgs", () => {
 		expect(args.systemPrompt).toBe("You are a helpful assistant.");
 	});
 
-	test("parses --cwd", () => {
+	test("parses all three component config flags", () => {
+		const args = parseCliArgs(baseArgs);
+		expect(args.sessionManagerConfig).toBe("./sm.yaml");
+		expect(args.authStorageConfig).toBe("./auth.yaml");
+		expect(args.agentEnvironmentConfig).toBe("./env.yaml");
+	});
+
+	test("authStorageConfig is undefined when --auth-storage-config is not provided", () => {
+		const argsWithoutAuth = [
+			"--provider",
+			"anthropic",
+			"--model",
+			"claude-sonnet-4-5-20250514",
+			"--session-manager-config",
+			"./sm.yaml",
+			"--agent-environment-config",
+			"./env.yaml",
+		];
+		const args = parseCliArgs(argsWithoutAuth);
+		expect(args.authStorageConfig).toBeUndefined();
+	});
+
+	test("--cwd flag is not recognised (no cwd field)", () => {
+		// --cwd has been removed; passing it is silently ignored (strict: false)
 		const args = parseCliArgs([...baseArgs, "--cwd", "/workspace"]);
-		expect(args.cwd).toBe("/workspace");
+		expect(args).not.toHaveProperty("cwd");
 	});
 
 	test("sets help flag", () => {
@@ -79,7 +228,6 @@ describe("parseCliArgs", () => {
 		const args = parseCliArgs(baseArgs);
 		expect(args.thinking).toBeUndefined();
 		expect(args.systemPrompt).toBeUndefined();
-		expect(args.cwd).toBeUndefined();
 		expect(args.apiKey).toBeUndefined();
 	});
 

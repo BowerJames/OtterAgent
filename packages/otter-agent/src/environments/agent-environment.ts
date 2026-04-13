@@ -2,6 +2,8 @@ import type { AgentEnvironment as IAgentEnvironment } from "../interfaces/agent-
 import {
 	JustBashAgentEnvironment,
 	type JustBashAgentEnvironmentOptions,
+	JustBashAgentEnvironmentOptionsSchema,
+	JustBashAgentEnvironmentTemplate,
 	type JustBashToolName,
 	isJustBashAgentEnvironment,
 } from "./just-bash/just-bash-agent-environment.js";
@@ -9,6 +11,8 @@ import {
 export {
 	isJustBashAgentEnvironment,
 	JustBashAgentEnvironment,
+	JustBashAgentEnvironmentOptionsSchema,
+	JustBashAgentEnvironmentTemplate,
 	type JustBashAgentEnvironmentOptions,
 	type JustBashToolName,
 };

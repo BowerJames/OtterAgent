@@ -1,6 +1,8 @@
+import { Type } from "@sinclair/typebox";
 import { Bash } from "just-bash";
 import type { BashOptions, CommandName, InitialFiles, NetworkConfig } from "just-bash";
 import type { AgentEnvironment } from "../../interfaces/agent-environment.js";
+import type { ComponentTemplate } from "../../interfaces/component-template.js";
 import type { SkillDefinition } from "../../interfaces/skill-definition.js";
 import type { SkillSupportedAgentEnvironment } from "../../interfaces/skill-supported-agent-environment.js";
 import type { ToolDefinition } from "../../interfaces/tool-definition.js";
@@ -289,3 +291,221 @@ export class JustBashAgentEnvironment implements AgentEnvironment, SkillSupporte
 export function isJustBashAgentEnvironment(env: object): env is JustBashAgentEnvironment {
 	return env instanceof JustBashAgentEnvironment;
 }
+
+// ─── ComponentTemplate ────────────────────────────────────────────────────────
+
+/**
+ * TypeBox schema for execution limits. All fields are optional numbers
+ * that override just-bash defaults.
+ */
+const ExecutionLimitsSchema = Type.Object({
+	maxCallDepth: Type.Optional(Type.Number({ minimum: 1 })),
+	maxCommandCount: Type.Optional(Type.Number({ minimum: 1 })),
+	maxLoopIterations: Type.Optional(Type.Number({ minimum: 1 })),
+	maxAwkIterations: Type.Optional(Type.Number({ minimum: 1 })),
+	maxSedIterations: Type.Optional(Type.Number({ minimum: 1 })),
+	maxJqIterations: Type.Optional(Type.Number({ minimum: 1 })),
+	maxSqliteTimeoutMs: Type.Optional(Type.Number({ minimum: 0 })),
+	maxPythonTimeoutMs: Type.Optional(Type.Number({ minimum: 0 })),
+	maxJsTimeoutMs: Type.Optional(Type.Number({ minimum: 0 })),
+	maxGlobOperations: Type.Optional(Type.Number({ minimum: 1 })),
+	maxStringLength: Type.Optional(Type.Number({ minimum: 1 })),
+	maxArrayElements: Type.Optional(Type.Number({ minimum: 1 })),
+	maxHeredocSize: Type.Optional(Type.Number({ minimum: 1 })),
+	maxSubstitutionDepth: Type.Optional(Type.Number({ minimum: 1 })),
+	maxBraceExpansionResults: Type.Optional(Type.Number({ minimum: 1 })),
+	maxOutputSize: Type.Optional(Type.Number({ minimum: 1 })),
+	maxFileDescriptors: Type.Optional(Type.Number({ minimum: 1 })),
+	maxSourceDepth: Type.Optional(Type.Number({ minimum: 1 })),
+});
+
+/**
+ * TypeBox schema for network configuration.
+ *
+ * Note: `allowedUrlPrefixes` supports only plain string entries when loaded
+ * from a config file. The `AllowedUrl` object form (with transforms for
+ * secrets brokering) requires programmatic construction.
+ */
+const NetworkConfigSchema = Type.Object({
+	allowedUrlPrefixes: Type.Optional(Type.Array(Type.String())),
+	allowedMethods: Type.Optional(
+		Type.Array(
+			Type.Union([
+				Type.Literal("GET"),
+				Type.Literal("HEAD"),
+				Type.Literal("POST"),
+				Type.Literal("PUT"),
+				Type.Literal("DELETE"),
+				Type.Literal("PATCH"),
+				Type.Literal("OPTIONS"),
+			]),
+		),
+	),
+	dangerouslyAllowFullInternetAccess: Type.Optional(Type.Boolean()),
+	maxRedirects: Type.Optional(Type.Number({ minimum: 0 })),
+	timeoutMs: Type.Optional(Type.Number({ minimum: 0 })),
+	maxResponseSize: Type.Optional(Type.Number({ minimum: 1 })),
+	denyPrivateRanges: Type.Optional(Type.Boolean()),
+});
+
+/** All valid just-bash built-in command names. */
+const CommandNameLiterals = [
+	"echo",
+	"cat",
+	"printf",
+	"ls",
+	"mkdir",
+	"rmdir",
+	"touch",
+	"rm",
+	"cp",
+	"mv",
+	"ln",
+	"chmod",
+	"pwd",
+	"readlink",
+	"head",
+	"tail",
+	"wc",
+	"stat",
+	"grep",
+	"fgrep",
+	"egrep",
+	"rg",
+	"sed",
+	"awk",
+	"sort",
+	"uniq",
+	"comm",
+	"cut",
+	"paste",
+	"tr",
+	"rev",
+	"nl",
+	"fold",
+	"expand",
+	"unexpand",
+	"strings",
+	"split",
+	"column",
+	"join",
+	"tee",
+	"find",
+	"basename",
+	"dirname",
+	"tree",
+	"du",
+	"env",
+	"printenv",
+	"alias",
+	"unalias",
+	"history",
+	"xargs",
+	"true",
+	"false",
+	"clear",
+	"bash",
+	"sh",
+	"jq",
+	"base64",
+	"diff",
+	"date",
+	"sleep",
+	"timeout",
+	"seq",
+	"expr",
+	"md5sum",
+	"sha1sum",
+	"sha256sum",
+	"file",
+	"html-to-markdown",
+	"help",
+	"which",
+	"tac",
+	"hostname",
+	"od",
+	"gzip",
+	"gunzip",
+	"zcat",
+	"tar",
+	"yq",
+	"xan",
+	"sqlite3",
+	"time",
+	"whoami",
+] as const satisfies CommandName[];
+
+/** TypeBox schema for {@link JustBashAgentEnvironment} options. */
+export const JustBashAgentEnvironmentOptionsSchema = Type.Object({
+	/** Working directory for relative path resolution. Default: "/" */
+	cwd: Type.Optional(Type.String()),
+	/** Environment variables available to shell commands. */
+	env: Type.Optional(Type.Record(Type.String(), Type.String())),
+	/**
+	 * Tools to expose to the agent. When omitted, all four tools are included.
+	 *
+	 * @example ["bash", "read"]
+	 */
+	tools: Type.Optional(
+		Type.Array(
+			Type.Union([
+				Type.Literal("bash"),
+				Type.Literal("read"),
+				Type.Literal("write"),
+				Type.Literal("edit"),
+			]),
+		),
+	),
+	/**
+	 * Allowlist of built-in command names. All built-ins enabled when omitted.
+	 * Use to restrict which shell commands are available.
+	 */
+	commands: Type.Optional(
+		Type.Array(
+			Type.Union(
+				CommandNameLiterals.map((n) => Type.Literal(n)) as [
+					ReturnType<typeof Type.Literal>,
+					...ReturnType<typeof Type.Literal>[],
+				],
+			),
+		),
+	),
+	/**
+	 * Initial files to seed the virtual filesystem.
+	 *
+	 * Only string file content is supported when loading from a config file.
+	 * Binary content requires programmatic construction.
+	 */
+	files: Type.Optional(Type.Record(Type.String(), Type.String())),
+	/** Execution limits to prevent runaway compute. */
+	executionLimits: Type.Optional(ExecutionLimitsSchema),
+	/**
+	 * Network configuration. Network access is disabled by default.
+	 * Only plain string URL prefixes are supported via config file.
+	 */
+	network: Type.Optional(NetworkConfigSchema),
+});
+
+/**
+ * {@link ComponentTemplate} for {@link JustBashAgentEnvironment}.
+ *
+ * Builds a sandboxed just-bash environment from a config file.
+ */
+export const JustBashAgentEnvironmentTemplate: ComponentTemplate<
+	typeof JustBashAgentEnvironmentOptionsSchema,
+	JustBashAgentEnvironment
+> = {
+	configSchema: () => JustBashAgentEnvironmentOptionsSchema,
+	defaultConfig: () => ({}),
+	build: (config) => {
+		const opts: JustBashAgentEnvironmentOptions = {};
+		if (config.cwd !== undefined) opts.cwd = config.cwd;
+		if (config.env !== undefined) opts.env = config.env;
+		if (config.tools !== undefined) opts.tools = config.tools as JustBashToolName[];
+		if (config.commands !== undefined) opts.commands = config.commands as CommandName[];
+		if (config.files !== undefined) opts.files = config.files as InitialFiles;
+		if (config.executionLimits !== undefined) opts.executionLimits = config.executionLimits;
+		if (config.network !== undefined) opts.network = config.network as NetworkConfig;
+		return new JustBashAgentEnvironment(opts);
+	},
+};

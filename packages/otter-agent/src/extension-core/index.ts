@@ -46,6 +46,11 @@ export {
 	validateExtensionConfig,
 	validateExtensionConfigOnly,
 } from "./validate-extension-config.js";
+export {
+	ComponentConfigValidationError,
+	validateComponentConfig,
+	validateComponentConfigOnly,
+} from "./validate-component-config.js";
 export type { ExtensionRunnerActions } from "./extension-runner.js";
 export type { ExtensionHandler, ExtensionsAPI, ToolInfo } from "./extensions-api.js";
 export type { ProviderConfig, ProviderModelConfig } from "./providers.js";

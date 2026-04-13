@@ -1,6 +1,8 @@
 import { Database } from "bun:sqlite";
 import type { AgentMessage, ThinkingLevel } from "@mariozechner/pi-agent-core";
 import type { ImageContent, TextContent } from "@mariozechner/pi-ai";
+import { Type } from "@sinclair/typebox";
+import type { ComponentTemplate } from "../interfaces/component-template.js";
 import type {
 	Entry,
 	EntryId,
@@ -325,3 +327,29 @@ export function createSqliteSessionManager(
 ): SqliteSessionManager {
 	return new SqliteSessionManager(options);
 }
+
+// ─── ComponentTemplate ────────────────────────────────────────────────────────
+
+/** TypeBox schema for {@link SqliteSessionManager} options. */
+export const SqliteSessionManagerOptionsSchema = Type.Object({
+	/** Path to the SQLite database file. Created if it doesn't exist. */
+	dbPath: Type.String({ minLength: 1 }),
+	/** Unique session identifier. Entries are scoped to this ID. */
+	sessionId: Type.String({ minLength: 1 }),
+	/** Optional table name. Defaults to "entries". */
+	tableName: Type.Optional(Type.String({ minLength: 1 })),
+});
+
+/**
+ * {@link ComponentTemplate} for {@link SqliteSessionManager}.
+ *
+ * Builds a SQLite-backed session manager from a config file.
+ */
+export const SqliteSessionManagerTemplate: ComponentTemplate<
+	typeof SqliteSessionManagerOptionsSchema,
+	SqliteSessionManager
+> = {
+	configSchema: () => SqliteSessionManagerOptionsSchema,
+	defaultConfig: () => ({ dbPath: "./sessions.db", sessionId: "default" }),
+	build: (config) => new SqliteSessionManager(config),
+};
