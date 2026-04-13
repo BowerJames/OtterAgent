@@ -35,8 +35,8 @@ export type Entry =
 	| {
 			type: "compaction";
 			id: EntryId;
-			summary: string;
-			firstKeptEntryId: EntryId;
+			summary?: string;
+			firstKeptEntryId?: EntryId;
 			tokensBefore: number;
 			details?: unknown;
 	  }
@@ -97,17 +97,24 @@ export interface SessionManager {
 	 * Record a compaction event. When `buildSessionContext()` is called,
 	 * messages before `firstKeptEntryId` will be replaced by the summary.
 	 *
+	 * When `firstKeptEntryId` is omitted, full compaction occurs: only
+	 * messages appended after the compaction entry are kept.
+	 *
+	 * When `summary` is omitted, no summary message is prepended to
+	 * the LLM context.
+	 *
 	 * @param summary - The compaction summary text.
 	 * @param firstKeptEntryId - The ID of the first entry to keep after
 	 *   compaction. All entries before this are replaced by the summary.
+	 *   When omitted, all pre-compaction messages are discarded.
 	 * @param tokensBefore - The number of tokens in the context before
 	 *   compaction. Used for display purposes. Defaults to 0 if unknown.
 	 * @param details - Optional implementation-specific compaction metadata.
 	 * @returns The unique ID of the compaction entry.
 	 */
 	compact(
-		summary: string,
-		firstKeptEntryId: EntryId,
+		summary?: string,
+		firstKeptEntryId?: EntryId,
 		tokensBefore?: number,
 		details?: unknown,
 	): EntryId;

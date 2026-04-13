@@ -236,8 +236,8 @@ describe("AgentSession", () => {
 		const events: string[] = [];
 		const unsub = session.subscribe((e) => events.push(e.type));
 
-		// Trigger a compaction (fires events synchronously)
-		session.compact();
+		// Trigger a compaction (fires events asynchronously)
+		await session.compact();
 
 		expect(events).toContain("compaction_start");
 		expect(events).toContain("compaction_end");
@@ -245,8 +245,157 @@ describe("AgentSession", () => {
 		unsub();
 		events.length = 0;
 
-		session.compact();
+		await session.compact();
 		expect(events).toHaveLength(0);
+
+		await session.dispose();
+	});
+
+	test("compact calls sessionManager.compact with no arguments by default", async () => {
+		const sm = createMockSessionManager();
+		const session = new AgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+		});
+
+		await session.compact();
+
+		expect(sm.compact).toHaveBeenCalledWith(undefined, undefined, 0);
+
+		await session.dispose();
+	});
+
+	test("compact passes customInstructions to session_before_compact", async () => {
+		const sm = createMockSessionManager();
+		const session = new AgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+		});
+
+		let receivedInstructions: string | undefined;
+		const ext: Extension = (api) =>
+			api.on("session_before_compact", (event) => {
+				receivedInstructions = event.customInstructions;
+			});
+
+		await session.loadExtensions([ext]);
+		await session.compact("Focus on code changes");
+
+		expect(receivedInstructions).toBe("Focus on code changes");
+
+		await session.dispose();
+	});
+
+	test("compact can be cancelled by extension via session_before_compact", async () => {
+		const sm = createMockSessionManager();
+		const session = new AgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+		});
+
+		const ext: Extension = (api) =>
+			api.on("session_before_compact", () => {
+				return { cancel: true };
+			});
+
+		await session.loadExtensions([ext]);
+		await session.compact();
+
+		// compact() should not have been called on session manager
+		expect(sm.compact).not.toHaveBeenCalled();
+
+		await session.dispose();
+	});
+
+	test("compact uses extension-provided custom compaction", async () => {
+		const sm = createMockSessionManager();
+		const session = new AgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+		});
+
+		const ext: Extension = (api) =>
+			api.on("session_before_compact", () => {
+				return {
+					compaction: {
+						summary: "custom summary",
+						firstKeptEntryId: "entry-5",
+					},
+				};
+			});
+
+		await session.loadExtensions([ext]);
+		await session.compact();
+
+		expect(sm.compact).toHaveBeenCalledWith("custom summary", "entry-5", 0);
+
+		await session.dispose();
+	});
+
+	test("compact fires session_compact event with fromExtension flag", async () => {
+		const sm = createMockSessionManager();
+		const session = new AgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+		});
+
+		let capturedSummary = "";
+		let capturedFromExtension = false;
+		const ext: Extension = (api) =>
+			api.on("session_compact", (event) => {
+				capturedSummary = event.summary;
+				capturedFromExtension = event.fromExtension;
+			});
+
+		await session.loadExtensions([ext]);
+		await session.compact();
+
+		expect(capturedSummary).toBe("");
+		expect(capturedFromExtension).toBe(false);
+
+		await session.dispose();
+	});
+
+	test("compact syncs agent messages via replaceMessages", async () => {
+		// Use a real session manager to verify message sync
+		const { InMemorySessionManager } = await import(
+			"../session-managers/in-memory-session-manager.js"
+		);
+		const sm = new InMemorySessionManager();
+		const session = new AgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+		});
+
+		// Seed some messages
+		session.agent.appendMessage({
+			role: "user",
+			content: [{ type: "text", text: "Hello" }],
+			timestamp: 1,
+		} as AgentMessage);
+		session.agent.appendMessage({
+			role: "assistant",
+			content: [{ type: "text", text: "Hi" }],
+			timestamp: 2,
+		} as AgentMessage);
+		expect(session.agent.state.messages).toHaveLength(2);
+
+		await session.compact();
+
+		// After default compaction (no summary, no firstKeptEntryId), messages should be empty
+		expect(session.agent.state.messages).toHaveLength(0);
 
 		await session.dispose();
 	});

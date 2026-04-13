@@ -293,7 +293,7 @@ describe("compact", () => {
 		expect(messages[2].role).toBe("assistant");
 	});
 
-	test("firstKeptEntryId not found — full compaction fallback (summary only)", () => {
+	test("firstKeptEntryId not found — summary only, no pre-compaction messages", () => {
 		const sm = createInMemorySessionManager();
 		sm.appendMessage(makeUserMessage("old 1"));
 		sm.appendMessage(makeAssistantMessage("old 2"));
@@ -316,6 +316,70 @@ describe("compact", () => {
 		expect(messages).toHaveLength(2);
 		expect(messages[0].role).toBe("compactionSummary");
 		expect(messages[1].role).toBe("assistant");
+	});
+
+	test("no arguments — full compaction with no summary message", () => {
+		const sm = createInMemorySessionManager();
+		sm.appendMessage(makeUserMessage("old 1"));
+		sm.appendMessage(makeAssistantMessage("old 2"));
+		sm.compact();
+
+		const { messages } = sm.buildSessionContext();
+		expect(messages).toHaveLength(0);
+	});
+
+	test("no arguments — messages appended after compact() are kept", () => {
+		const sm = createInMemorySessionManager();
+		sm.appendMessage(makeUserMessage("old"));
+		sm.compact();
+		sm.appendMessage(makeAssistantMessage("new after compact"));
+
+		const { messages } = sm.buildSessionContext();
+		expect(messages).toHaveLength(1);
+		expect(messages[0].role).toBe("assistant");
+	});
+
+	test("summary only (no firstKeptEntryId) — full compaction with summary message", () => {
+		const sm = createInMemorySessionManager();
+		sm.appendMessage(makeUserMessage("old 1"));
+		sm.appendMessage(makeAssistantMessage("old 2"));
+		sm.compact("my summary");
+
+		const { messages } = sm.buildSessionContext();
+		expect(messages).toHaveLength(1);
+		expect(messages[0].role).toBe("compactionSummary");
+		// @ts-expect-error — accessing compactionSummary role field
+		expect(messages[0].summary).toBe("my summary");
+	});
+
+	test("firstKeptEntryId only (no summary) — kept messages, no summary message", () => {
+		const sm = createInMemorySessionManager();
+		sm.appendMessage(makeUserMessage("old 1"));
+		const keepId = sm.appendMessage(makeUserMessage("keep this"));
+		sm.appendMessage(makeAssistantMessage("after keep"));
+		sm.compact(undefined, keepId);
+
+		const { messages } = sm.buildSessionContext();
+		// No summary message, just the kept messages
+		expect(messages).toHaveLength(2);
+		expect(messages[0].role).toBe("user");
+		expect(messages[1].role).toBe("assistant");
+	});
+
+	test("summary + firstKeptEntryId — summary message followed by kept messages", () => {
+		const sm = createInMemorySessionManager();
+		sm.appendMessage(makeUserMessage("old 1"));
+		const keepId = sm.appendMessage(makeUserMessage("keep this"));
+		sm.appendMessage(makeAssistantMessage("after keep"));
+		sm.compact("a summary", keepId);
+
+		const { messages } = sm.buildSessionContext();
+		expect(messages).toHaveLength(3);
+		expect(messages[0].role).toBe("compactionSummary");
+		// @ts-expect-error — accessing compactionSummary role field
+		expect(messages[0].summary).toBe("a summary");
+		expect(messages[1].role).toBe("user");
+		expect(messages[2].role).toBe("assistant");
 	});
 
 	test("latest compaction wins when compact() is called multiple times", () => {

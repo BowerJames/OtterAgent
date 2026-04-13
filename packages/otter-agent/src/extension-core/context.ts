@@ -19,7 +19,7 @@ export interface ContextUsage {
 /** Options for triggering compaction. */
 export interface CompactOptions {
 	customInstructions?: string;
-	onComplete?: (result: { summary: string }) => void;
+	onComplete?: (result: { summary?: string }) => void;
 	onError?: (error: Error) => void;
 }
 
