@@ -42,11 +42,6 @@ export type {
 export type { Extension } from "./extension.js";
 export { ExtensionRunner } from "./extension-runner.js";
 export {
-	ExtensionConfigValidationError,
-	validateExtensionConfig,
-	validateExtensionConfigOnly,
-} from "./validate-extension-config.js";
-export {
 	ComponentConfigValidationError,
 	validateComponentConfig,
 	validateComponentConfigOnly,

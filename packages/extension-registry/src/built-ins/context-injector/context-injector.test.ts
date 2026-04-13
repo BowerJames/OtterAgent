@@ -2,7 +2,7 @@
  * Tests for the ContextInjector built-in extension template.
  */
 import { describe, expect, it } from "bun:test";
-import { validateExtensionConfig } from "@otter-agent/core";
+import { validateComponentConfig } from "@otter-agent/core";
 import {
 	type ContextInjectorConfig,
 	ContextInjectorConfigSchema,
@@ -10,10 +10,10 @@ import {
 } from "./context-injector.js";
 
 describe("ContextInjectorTemplate", () => {
-	it("has all required ExtensionTemplate methods", () => {
+	it("has all required ComponentTemplate methods", () => {
 		expect(typeof ContextInjectorTemplate.configSchema).toBe("function");
 		expect(typeof ContextInjectorTemplate.defaultConfig).toBe("function");
-		expect(typeof ContextInjectorTemplate.buildExtension).toBe("function");
+		expect(typeof ContextInjectorTemplate.build).toBe("function");
 	});
 
 	it("returns a valid TypeBox schema from configSchema()", () => {
@@ -28,12 +28,12 @@ describe("ContextInjectorTemplate", () => {
 	});
 
 	it("builds an extension function", () => {
-		const extension = ContextInjectorTemplate.buildExtension({ content: "test" });
+		const extension = ContextInjectorTemplate.build({ content: "test" });
 		expect(typeof extension).toBe("function");
 	});
 
-	it("builds via validateExtensionConfig from core", () => {
-		const extension = validateExtensionConfig(ContextInjectorTemplate, {
+	it("builds via validateComponentConfig from core", () => {
+		const extension = validateComponentConfig(ContextInjectorTemplate, {
 			content: "Always respond in French.",
 		});
 		expect(typeof extension).toBe("function");
@@ -48,10 +48,10 @@ describe("ContextInjectorTemplate", () => {
 			on: (event: string, handler: unknown) => {
 				handlers.set(event, handler);
 			},
-		} as unknown as Parameters<ReturnType<typeof ContextInjectorTemplate.buildExtension>>[0];
+		} as unknown as Parameters<ReturnType<typeof ContextInjectorTemplate.build>>[0];
 
 		// Build and invoke the extension
-		const extension = ContextInjectorTemplate.buildExtension({ content: "APPENDED TEXT" });
+		const extension = ContextInjectorTemplate.build({ content: "APPENDED TEXT" });
 		await extension(api);
 
 		// Simulate a before_agent_start event
@@ -68,18 +68,18 @@ describe("ContextInjectorTemplate", () => {
 	it("validates that invalid content type is rejected", () => {
 		// content must be a string — passing a number should fail validation
 		expect(() =>
-			validateExtensionConfig(ContextInjectorTemplate, { content: 42 as unknown as string }),
-		).toThrow("Extension config validation failed");
+			validateComponentConfig(ContextInjectorTemplate, { content: 42 as unknown as string }),
+		).toThrow("Component config validation failed");
 	});
 
 	it("fills content from defaults when omitted", () => {
 		// No content provided — should use default "" and not throw
-		const extension = validateExtensionConfig(ContextInjectorTemplate, {});
+		const extension = validateComponentConfig(ContextInjectorTemplate, {});
 		expect(typeof extension).toBe("function");
 	});
 
 	it("accepts valid config", () => {
-		const extension = validateExtensionConfig(ContextInjectorTemplate, {
+		const extension = validateComponentConfig(ContextInjectorTemplate, {
 			content: "Some context",
 		});
 		expect(typeof extension).toBe("function");

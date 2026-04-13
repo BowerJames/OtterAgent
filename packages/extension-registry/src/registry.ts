@@ -4,9 +4,10 @@
  * Provides methods to register, look up, and build extensions by name.
  * A default pre-populated singleton is available via {@link defaultRegistry}.
  */
-import { validateExtensionConfig } from "@otter-agent/core";
-import type { ExtensionTemplate } from "@otter-agent/core";
+import { validateComponentConfig } from "@otter-agent/core";
+import type { ComponentTemplate } from "@otter-agent/core";
 import type { Extension } from "@otter-agent/core";
+import type { TSchema } from "@sinclair/typebox";
 
 /**
  * Error thrown when attempting to register a template under a name
@@ -34,7 +35,7 @@ export class ExtensionRegistryError extends Error {
  * ```
  */
 export class ExtensionRegistry {
-	private readonly _templates = new Map<string, ExtensionTemplate>();
+	private readonly _templates = new Map<string, ComponentTemplate<TSchema, Extension>>();
 
 	/**
 	 * Register a template under the given name.
@@ -43,7 +44,7 @@ export class ExtensionRegistry {
 	 * @param template - The extension template to register.
 	 * @throws {ExtensionRegistryError} If a template with the same name is already registered.
 	 */
-	register(name: string, template: ExtensionTemplate): void {
+	register(name: string, template: ComponentTemplate<TSchema, Extension>): void {
 		if (this._templates.has(name)) {
 			throw new ExtensionRegistryError(`Extension template "${name}" is already registered.`);
 		}
@@ -56,7 +57,7 @@ export class ExtensionRegistry {
 	 * @param name - The registered template name.
 	 * @returns The template, or `undefined` if not found.
 	 */
-	get(name: string): ExtensionTemplate | undefined {
+	get(name: string): ComponentTemplate<TSchema, Extension> | undefined {
 		return this._templates.get(name);
 	}
 
@@ -82,7 +83,7 @@ export class ExtensionRegistry {
 	/**
 	 * Build an extension by name with optional config.
 	 *
-	 * Delegates to {@link validateExtensionConfig} from `@otter-agent/core`
+	 * Delegates to {@link validateComponentConfig} from `@otter-agent/core`
 	 * for schema validation, default merging, and extension building.
 	 *
 	 * @param name - The registered template name.
@@ -90,7 +91,7 @@ export class ExtensionRegistry {
 	 *   template's defaults before validation.
 	 * @returns A built Extension ready for use with AgentSession.
 	 * @throws {ExtensionRegistryError} If no template is registered under the given name.
-	 * @throws {ExtensionConfigValidationError} If config validation fails.
+	 * @throws {ComponentConfigValidationError} If config validation fails.
 	 */
 	build(name: string, config?: Record<string, unknown>): Extension {
 		const template = this._templates.get(name);
@@ -100,6 +101,6 @@ export class ExtensionRegistry {
 					`Registered: ${this.getRegisteredNames().join(", ") || "(none)"}`,
 			);
 		}
-		return validateExtensionConfig(template, config);
+		return validateComponentConfig(template, config);
 	}
 }

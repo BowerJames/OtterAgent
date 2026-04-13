@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { validateExtensionConfig } from "@otter-agent/core";
+import { validateComponentConfig } from "@otter-agent/core";
 /**
  * Tests for ExtensionRegistry.
  */
@@ -17,7 +17,7 @@ type TestConfig = { enabled: boolean; label: string };
 const testTemplate = {
 	configSchema: () => TestConfigSchema,
 	defaultConfig: (): TestConfig => ({ enabled: true, label: "test" }),
-	buildExtension: (config: TestConfig) => {
+	build: (config: TestConfig) => {
 		return () => {
 			// Extension captures config in closure — verified via build return
 			void config;
@@ -132,17 +132,17 @@ describe("ExtensionRegistry", () => {
 			// Pass a value that violates the schema (enabled should be boolean)
 			expect(() =>
 				registry.build("test", { enabled: "not-a-boolean" as unknown as boolean }),
-			).toThrow("Extension config validation failed");
+			).toThrow("Component config validation failed");
 		});
 
-		it("delegates to validateExtensionConfig from core", () => {
+		it("delegates to validateComponentConfig from core", () => {
 			const registry = new ExtensionRegistry();
 			registry.register("test", testTemplate);
 			const config = { label: "delegated" };
 			// Build via registry
 			const registryResult = registry.build("test", config);
 			// Build via core directly
-			const coreResult = validateExtensionConfig(testTemplate, config);
+			const coreResult = validateComponentConfig(testTemplate, config);
 			// Both should produce functions
 			expect(typeof registryResult).toBe("function");
 			expect(typeof coreResult).toBe("function");

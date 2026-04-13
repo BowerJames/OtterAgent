@@ -15,7 +15,7 @@ import { defaultRegistry } from "./default-registry.js";
  *   template's defaults before validation.
  * @returns A built Extension ready for use with AgentSession.
  * @throws {ExtensionRegistryError} If no template is registered under the given name.
- * @throws {ExtensionConfigValidationError} If config validation fails.
+ * @throws {ComponentConfigValidationError} If config validation fails.
  *
  * @example
  * ```ts
