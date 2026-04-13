@@ -449,12 +449,65 @@ export class AgentSession {
 
 	// ─── Compaction ───────────────────────────────────────────────────
 
-	/** Compact the conversation context. */
-	async compact(_customInstructions?: string): Promise<void> {
-		// TODO: Implement compaction with LLM summarisation in a future issue.
-		// For now this is a placeholder that fires the lifecycle events.
+	/**
+	 * Compact the conversation context.
+	 *
+	 * Default behaviour: records a compaction entry with no summary and no
+	 * `firstKeptEntryId`, effectively clearing all prior conversation history.
+	 * Only messages appended after the compaction entry are kept.
+	 *
+	 * Extensions can customise or cancel compaction via the `session_before_compact`
+	 * event. If an extension provides a custom compaction result (summary and/or
+	 * firstKeptEntryId), those values are used instead.
+	 */
+	async compact(customInstructions?: string): Promise<string | undefined> {
+		// 1. Emit compaction_start.
 		this._emit({ type: "compaction_start" });
+
+		// 2. Fire session_before_compact — extensions can cancel or provide custom result.
+		const beforeResult = await this._extensionRunner.emitSessionBeforeCompact({
+			type: "session_before_compact",
+			messages: this.agent.state.messages,
+			customInstructions,
+			signal: this.agent.signal ?? new AbortController().signal,
+		});
+
+		// 3. If extension cancelled, skip compaction.
+		if (beforeResult?.cancel) {
+			this._emit({ type: "compaction_end" });
+			return undefined;
+		}
+
+		// 4. Determine compaction parameters.
+		let summary: string | undefined;
+		let firstKeptEntryId: EntryId | undefined;
+		let fromExtension = false;
+
+		if (beforeResult?.compaction) {
+			summary = beforeResult.compaction.summary;
+			firstKeptEntryId = beforeResult.compaction.firstKeptEntryId;
+			fromExtension = true;
+		}
+		// else: default compaction — no summary, no firstKeptEntryId (full clear).
+
+		// 5. Record compaction in session manager.
+		this.sessionManager.compact(summary, firstKeptEntryId, 0);
+
+		// 6. Rebuild agent messages from session context to sync state.
+		const { messages } = this.sessionManager.buildSessionContext();
+		this.agent.replaceMessages(messages);
+
+		// 7. Fire session_compact event.
+		await this._extensionRunner.emit({
+			type: "session_compact",
+			summary: summary ?? "",
+			fromExtension,
+		});
+
+		// 8. Emit compaction_end.
 		this._emit({ type: "compaction_end" });
+
+		return summary;
 	}
 
 	// ─── Cleanup ──────────────────────────────────────────────────────
@@ -608,7 +661,13 @@ export class AgentSession {
 				};
 			},
 			compact: (options?: CompactOptions) => {
-				this.compact(options?.customInstructions);
+				this.compact(options?.customInstructions)
+					.then((summary) => {
+						options?.onComplete?.({ summary });
+					})
+					.catch((err) => {
+						options?.onError?.(err instanceof Error ? err : new Error(String(err)));
+					});
 			},
 			getSystemPrompt: () => this.getSystemPrompt(),
 			waitForIdle: () => this.waitForIdle(),

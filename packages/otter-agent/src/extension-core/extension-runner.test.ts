@@ -624,7 +624,7 @@ describe("ExtensionRunner", () => {
 			expect(secondCalled).not.toHaveBeenCalled();
 		});
 
-		test("custom compaction short-circuits", async () => {
+		test("custom compaction short-circuits with summary and firstKeptEntryId", async () => {
 			const runner = createRunner();
 
 			await runner.loadExtensions([
@@ -648,6 +648,74 @@ describe("ExtensionRunner", () => {
 				summary: "custom summary",
 				firstKeptEntryId: "entry-42",
 			});
+		});
+
+		test("custom compaction with summary only (no firstKeptEntryId)", async () => {
+			const runner = createRunner();
+
+			await runner.loadExtensions([
+				(api) =>
+					api.on("session_before_compact", () => {
+						return {
+							compaction: {
+								summary: "summary only",
+							},
+						};
+					}),
+			]);
+
+			const result = await runner.emitSessionBeforeCompact({
+				type: "session_before_compact",
+				messages: [],
+				signal: new AbortController().signal,
+			});
+			expect(result?.compaction).toEqual({
+				summary: "summary only",
+			});
+		});
+
+		test("custom compaction with firstKeptEntryId only (no summary)", async () => {
+			const runner = createRunner();
+
+			await runner.loadExtensions([
+				(api) =>
+					api.on("session_before_compact", () => {
+						return {
+							compaction: {
+								firstKeptEntryId: "entry-99",
+							},
+						};
+					}),
+			]);
+
+			const result = await runner.emitSessionBeforeCompact({
+				type: "session_before_compact",
+				messages: [],
+				signal: new AbortController().signal,
+			});
+			expect(result?.compaction).toEqual({
+				firstKeptEntryId: "entry-99",
+			});
+		});
+
+		test("custom compaction with neither summary nor firstKeptEntryId", async () => {
+			const runner = createRunner();
+
+			await runner.loadExtensions([
+				(api) =>
+					api.on("session_before_compact", () => {
+						return {
+							compaction: {},
+						};
+					}),
+			]);
+
+			const result = await runner.emitSessionBeforeCompact({
+				type: "session_before_compact",
+				messages: [],
+				signal: new AbortController().signal,
+			});
+			expect(result?.compaction).toEqual({});
 		});
 	});
 

@@ -43,8 +43,8 @@ export interface SessionBeforeCompactResult {
 	cancel?: boolean;
 	/** Provide a custom compaction result to skip the default summarisation. */
 	compaction?: {
-		summary: string;
-		firstKeptEntryId: EntryId;
+		summary?: string;
+		firstKeptEntryId?: EntryId;
 		details?: unknown;
 	};
 }

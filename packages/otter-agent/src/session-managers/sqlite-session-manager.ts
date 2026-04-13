@@ -183,8 +183,8 @@ export class SqliteSessionManager implements SessionManager {
 	}
 
 	compact(
-		summary: string,
-		firstKeptEntryId: EntryId,
+		summary?: string,
+		firstKeptEntryId?: EntryId,
 		tokensBefore = 0,
 		details?: unknown,
 	): EntryId {
@@ -227,32 +227,28 @@ export class SqliteSessionManager implements SessionManager {
 
 		if (latestCompaction !== undefined) {
 			const compaction = latestCompaction;
-			const compactionSummary = createCompactionSummaryMessage(
-				compaction.summary,
-				compaction.tokensBefore,
-			);
+			const compactionIndex = entries.indexOf(latestCompaction);
 
-			// Find the index of firstKeptEntryId.
-			const firstKeptIndex = entries.findIndex((e) => e.id === compaction.firstKeptEntryId);
+			// Build the message list starting with an optional summary.
+			messages = [];
 
-			if (firstKeptIndex === -1) {
-				// firstKeptEntryId not found — full compaction fallback.
-				const compactionIndex = entries.indexOf(latestCompaction);
-				const afterCompaction = entries.slice(compactionIndex + 1);
-				messages = [compactionSummary, ...extractMessages(afterCompaction)];
-			} else {
+			if (compaction.summary !== undefined) {
+				messages.push(createCompactionSummaryMessage(compaction.summary, compaction.tokensBefore));
+			}
+
+			if (compaction.firstKeptEntryId !== undefined) {
 				// Include message-bearing entries from firstKeptEntryId onward,
 				// but stop before (and excluding) the compaction entry itself.
-				const compactionIndex = entries.indexOf(latestCompaction);
-				const tail = entries.slice(firstKeptIndex, compactionIndex);
-				const tailMessages = extractMessages(tail);
-
-				// Also include any message-bearing entries after the compaction entry.
-				const afterCompaction = entries.slice(compactionIndex + 1);
-				const afterMessages = extractMessages(afterCompaction);
-
-				messages = [compactionSummary, ...tailMessages, ...afterMessages];
+				const firstKeptIndex = entries.findIndex((e) => e.id === compaction.firstKeptEntryId);
+				if (firstKeptIndex !== -1) {
+					const tail = entries.slice(firstKeptIndex, compactionIndex);
+					messages.push(...extractMessages(tail));
+				}
 			}
+
+			// Include any message-bearing entries after the compaction entry.
+			const afterCompaction = entries.slice(compactionIndex + 1);
+			messages.push(...extractMessages(afterCompaction));
 		} else {
 			messages = extractMessages(entries);
 		}
