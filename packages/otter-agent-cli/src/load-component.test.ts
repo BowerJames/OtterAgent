@@ -79,6 +79,16 @@ describe("resolveTemplatePath", () => {
 		const resolved = resolveTemplatePath("my-package/index.js", "/some/dir");
 		expect(resolved).toBe("my-package/index.js");
 	});
+
+	test("resolves parent-relative paths against configDir", () => {
+		const resolved = resolveTemplatePath("../sibling/foo.ts", "/some/dir");
+		expect(resolved).toBe("/some/sibling/foo.ts");
+	});
+
+	test("resolves deeply nested relative paths", () => {
+		const resolved = resolveTemplatePath("./sub/dir/template.ts", "/base/config");
+		expect(resolved).toBe("/base/config/sub/dir/template.ts");
+	});
 });
 
 describe("loadComponentTemplate", () => {
