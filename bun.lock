@@ -9,6 +9,14 @@
         "typescript": "^5.7.0",
       },
     },
+    "packages/extension-registry": {
+      "name": "@otter-agent/extension-registry",
+      "version": "0.0.1",
+      "dependencies": {
+        "@otter-agent/core": "workspace:*",
+        "@sinclair/typebox": "^0.34.0",
+      },
+    },
     "packages/otter-agent": {
       "name": "@otter-agent/core",
       "version": "0.0.1",
@@ -181,6 +189,8 @@
     "@otter-agent/cli": ["@otter-agent/cli@workspace:packages/otter-agent-cli"],
 
     "@otter-agent/core": ["@otter-agent/core@workspace:packages/otter-agent"],
+
+    "@otter-agent/extension-registry": ["@otter-agent/extension-registry@workspace:packages/extension-registry"],
 
     "@protobufjs/aspromise": ["@protobufjs/aspromise@1.1.2", "", {}, "sha512-j+gKExEuLmKwvz3OgROXtrJ2UG2x8Ch2YZUxahh+s1F2HZ+wAceUNLkvy6zKCPVRkU++ZWQrdxsUeQXmcg4uoQ=="],
 
