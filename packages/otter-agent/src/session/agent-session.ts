@@ -460,7 +460,7 @@ export class AgentSession {
 	 * event. If an extension provides a custom compaction result (summary and/or
 	 * firstKeptEntryId), those values are used instead.
 	 */
-	async compact(customInstructions?: string): Promise<void> {
+	async compact(customInstructions?: string): Promise<string | undefined> {
 		// 1. Emit compaction_start.
 		this._emit({ type: "compaction_start" });
 
@@ -475,7 +475,7 @@ export class AgentSession {
 		// 3. If extension cancelled, skip compaction.
 		if (beforeResult?.cancel) {
 			this._emit({ type: "compaction_end" });
-			return;
+			return undefined;
 		}
 
 		// 4. Determine compaction parameters.
@@ -506,6 +506,8 @@ export class AgentSession {
 
 		// 8. Emit compaction_end.
 		this._emit({ type: "compaction_end" });
+
+		return summary;
 	}
 
 	// ─── Cleanup ──────────────────────────────────────────────────────
@@ -660,8 +662,8 @@ export class AgentSession {
 			},
 			compact: (options?: CompactOptions) => {
 				this.compact(options?.customInstructions)
-					.then(() => {
-						options?.onComplete?.({ summary: undefined });
+					.then((summary) => {
+						options?.onComplete?.({ summary });
 					})
 					.catch((err) => {
 						options?.onError?.(err instanceof Error ? err : new Error(String(err)));

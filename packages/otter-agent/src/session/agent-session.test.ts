@@ -340,32 +340,6 @@ describe("AgentSession", () => {
 		await session.dispose();
 	});
 
-	test("compact fires session_compact event with fromExtension flag", async () => {
-		const sm = createMockSessionManager();
-		const session = new AgentSession({
-			sessionManager: sm,
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-		});
-
-		let capturedSummary = "";
-		let capturedFromExtension = false;
-		const ext: Extension = (api) =>
-			api.on("session_compact", (event) => {
-				capturedSummary = event.summary;
-				capturedFromExtension = event.fromExtension;
-			});
-
-		await session.loadExtensions([ext]);
-		await session.compact();
-
-		expect(capturedSummary).toBe("");
-		expect(capturedFromExtension).toBe(false);
-
-		await session.dispose();
-	});
-
 	test("compact syncs agent messages via replaceMessages", async () => {
 		// Use a real session manager to verify message sync
 		const { InMemorySessionManager } = await import(
@@ -396,6 +370,108 @@ describe("AgentSession", () => {
 
 		// After default compaction (no summary, no firstKeptEntryId), messages should be empty
 		expect(session.agent.state.messages).toHaveLength(0);
+
+		await session.dispose();
+	});
+
+	test("compact returns undefined for default compaction", async () => {
+		const sm = createMockSessionManager();
+		const session = new AgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+		});
+
+		const result = await session.compact();
+		expect(result).toBeUndefined();
+
+		await session.dispose();
+	});
+
+	test("compact returns the summary from extension-provided compaction", async () => {
+		const sm = createMockSessionManager();
+		const session = new AgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+		});
+
+		const ext: Extension = (api) =>
+			api.on("session_before_compact", () => {
+				return {
+					compaction: {
+						summary: "extension summary",
+						firstKeptEntryId: "entry-10",
+					},
+				};
+			});
+
+		await session.loadExtensions([ext]);
+		const result = await session.compact();
+		expect(result).toBe("extension summary");
+
+		await session.dispose();
+	});
+
+	test("compact returns undefined when cancelled by extension", async () => {
+		const sm = createMockSessionManager();
+		const session = new AgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+		});
+
+		const ext: Extension = (api) =>
+			api.on("session_before_compact", () => {
+				return { cancel: true };
+			});
+
+		await session.loadExtensions([ext]);
+		const result = await session.compact();
+		expect(result).toBeUndefined();
+
+		await session.dispose();
+	});
+
+	test("compact fires session_compact event with extension-provided summary", async () => {
+		const sm = createMockSessionManager();
+		const session = new AgentSession({
+			sessionManager: sm,
+			authStorage: createMockAuthStorage(),
+			environment: createMockEnvironment(),
+			systemPrompt: "Prompt.",
+		});
+
+		let capturedSummary = "";
+		let capturedFromExtension = false;
+		const ext: Extension = (api) =>
+			api.on("session_compact", (event) => {
+				capturedSummary = event.summary;
+				capturedFromExtension = event.fromExtension;
+			});
+
+		await session.loadExtensions([ext]);
+
+		// Default compaction
+		await session.compact();
+		expect(capturedSummary).toBe("");
+		expect(capturedFromExtension).toBe(false);
+
+		// Extension-provided compaction
+		const ext2: Extension = (api) =>
+			api.on("session_before_compact", () => {
+				return {
+					compaction: { summary: "ext summary", firstKeptEntryId: "e1" },
+				};
+			});
+
+		await session.loadExtensions([ext, ext2]);
+		await session.compact();
+		expect(capturedSummary).toBe("ext summary");
+		expect(capturedFromExtension).toBe(true);
 
 		await session.dispose();
 	});
