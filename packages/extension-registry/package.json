@@ -1,0 +1,22 @@
+{
+	"name": "@otter-agent/extension-registry",
+	"version": "0.0.1",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"build": "tsc",
+		"test": "bun test",
+		"dev": "tsc --watch"
+	},
+	"dependencies": {
+		"@otter-agent/core": "workspace:*",
+		"@sinclair/typebox": "^0.34.0"
+	}
+}
