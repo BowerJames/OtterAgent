@@ -13,12 +13,14 @@
 			"import": "./dist/index.js"
 		}
 	},
+	"files": ["dist/", "README.md", "LICENSE"],
 	"scripts": {
 		"clean": "rm -rf dist",
 		"prebuild": "bun run clean",
 		"build": "tsc",
 		"test": "bun test",
-		"dev": "tsc --watch"
+		"dev": "tsc --watch",
+		"prepare": "tsc"
 	},
 	"dependencies": {
 		"@mariozechner/pi-agent-core": "^0.64.0",
