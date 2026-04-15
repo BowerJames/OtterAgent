@@ -48,12 +48,11 @@ import {
   AgentEnvironment,
   createAgentSession,
 } from "@otter-agent/core";
-import { Anthropic } from "@mariozechner/pi-ai/anthropic";
 
 // 1. Create pluggable components
 const sessionManager = createInMemorySessionManager();
 const authStorage = createInMemoryAuthStorage({
-  apiKeys: { anthropic: process.env.ANTHROPIC_API_KEY! },
+  anthropic: process.env.ANTHROPIC_API_KEY!,
 });
 const environment = AgentEnvironment.justBash({ cwd: "/workspace" });
 
@@ -67,8 +66,8 @@ const { session } = await createAgentSession({
 
 // 3. Subscribe to events
 session.subscribe((event) => {
-  if (event.type === "message_update") {
-    process.stdout.write(event.delta?.text ?? "");
+  if (event.type === "message_update" && event.assistantMessageEvent.type === "text_delta") {
+    process.stdout.write(event.assistantMessageEvent.delta);
   }
 });
 
@@ -108,7 +107,7 @@ const myExtension: Extension = (api) => {
     label: "My Tool",
     description: "Does something useful.",
     parameters: { type: "object", properties: {} },
-    execute: async (id, params, signal) => ({
+    execute: async (id, params, signal, onUpdate) => ({
       content: [{ type: "text", text: "Result!" }],
     }),
   });
@@ -120,10 +119,16 @@ const myExtension: Extension = (api) => {
 Run the agent as a headless service over JSON-RPC:
 
 ```typescript
-import { createRpcSession, StdioTransport } from "@otter-agent/core";
+import { createRpcSession, RpcTransport } from "@otter-agent/core";
+
+// Implement RpcTransport to connect to your frontend (TUI, web UI, etc.)
+const transport: RpcTransport = {
+  send(message) { /* send to client */ },
+  onMessage(handler) { /* listen for client messages */ },
+};
 
 const { handler } = await createRpcSession({
-  transport: new StdioTransport(() => handler.requestShutdown()),
+  transport,
   sessionManager,
   authStorage,
   environment,
