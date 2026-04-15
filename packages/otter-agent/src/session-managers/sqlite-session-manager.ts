@@ -1,4 +1,5 @@
-import { Database } from "bun:sqlite";
+import DatabaseConstructor from "better-sqlite3";
+type Database = InstanceType<typeof DatabaseConstructor>;
 import type { AgentMessage, ThinkingLevel } from "@mariozechner/pi-agent-core";
 import type { ImageContent, TextContent } from "@mariozechner/pi-ai";
 import { Type } from "@sinclair/typebox";
@@ -56,7 +57,7 @@ function validateSessionId(sessionId: string): void {
  * Entries are persisted in a single table shared across sessions, scoped by
  * `session_id`. One database file can serve many sessions simultaneously.
  *
- * Uses `bun:sqlite` for synchronous, high-performance access. WAL journal
+ * Uses `better-sqlite3` for synchronous, high-performance access. WAL journal
  * mode is enabled for safe concurrent reads.
  *
  * @example
@@ -85,7 +86,7 @@ export class SqliteSessionManager implements SessionManager {
 		validateTableName(tableName);
 		validateSessionId(options.sessionId);
 
-		this.db = new Database(options.dbPath, { create: true });
+		this.db = new DatabaseConstructor(options.dbPath);
 		this.sessionId = options.sessionId;
 		this.tableName = tableName;
 

@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
 import { Type } from "@sinclair/typebox";
+import { describe, expect, test } from "vitest";
 import type { ComponentTemplate } from "../interfaces/component-template.js";
 import {
 	ComponentConfigValidationError,

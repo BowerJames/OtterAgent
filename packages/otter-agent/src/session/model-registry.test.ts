@@ -1,5 +1,5 @@
-import { describe, expect, mock, test } from "bun:test";
 import type { Api, Model } from "@mariozechner/pi-ai";
+import { describe, expect, test, vi } from "vitest";
 import type { ProviderConfig, ProviderModelConfig } from "../extension-core/providers.js";
 import type { AuthStorage } from "../interfaces/auth-storage.js";
 import { ModelRegistry } from "./model-registry.js";
@@ -8,7 +8,7 @@ import { ModelRegistry } from "./model-registry.js";
 
 function createMockAuthStorage(overrides?: Partial<AuthStorage>): AuthStorage {
 	return {
-		getApiKey: mock(async (provider: string) => {
+		getApiKey: vi.fn(async (provider: string) => {
 			if (provider === "openai") return "sk-test-openai";
 			if (provider === "anthropic") return "sk-test-anthropic";
 			return undefined;

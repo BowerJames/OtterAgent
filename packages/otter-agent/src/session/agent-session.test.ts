@@ -1,7 +1,7 @@
-import { describe, expect, mock, test } from "bun:test";
 import type { AgentMessage, ThinkingLevel } from "@mariozechner/pi-agent-core";
 import type { Api, Model } from "@mariozechner/pi-ai";
 import { Type } from "@sinclair/typebox";
+import { describe, expect, test, vi } from "vitest";
 import type { Extension } from "../extension-core/extension.js";
 import type { AgentEnvironment } from "../interfaces/agent-environment.js";
 import type { AuthStorage } from "../interfaces/auth-storage.js";
@@ -16,20 +16,20 @@ import { ModelRegistry } from "./model-registry.js";
 function createMockSessionManager(): SessionManager {
 	let entryCounter = 0;
 	return {
-		appendMessage: mock(() => String(++entryCounter)),
-		buildSessionContext: mock(() => ({ messages: [], thinkingLevel: "off", model: null })),
-		compact: mock(() => String(++entryCounter)),
-		appendCustomEntry: mock(() => String(++entryCounter)),
-		appendCustomMessageEntry: mock(() => String(++entryCounter)),
-		appendModelChange: mock(() => String(++entryCounter)),
-		appendThinkingLevelChange: mock(() => String(++entryCounter)),
-		appendLabel: mock(() => String(++entryCounter)),
+		appendMessage: vi.fn(() => String(++entryCounter)),
+		buildSessionContext: vi.fn(() => ({ messages: [], thinkingLevel: "off", model: null })),
+		compact: vi.fn(() => String(++entryCounter)),
+		appendCustomEntry: vi.fn(() => String(++entryCounter)),
+		appendCustomMessageEntry: vi.fn(() => String(++entryCounter)),
+		appendModelChange: vi.fn(() => String(++entryCounter)),
+		appendThinkingLevelChange: vi.fn(() => String(++entryCounter)),
+		appendLabel: vi.fn(() => String(++entryCounter)),
 	};
 }
 
 function createMockAuthStorage(): AuthStorage {
 	return {
-		getApiKey: mock(async () => "test-api-key"),
+		getApiKey: vi.fn(async () => "test-api-key"),
 	};
 }
 
@@ -485,7 +485,7 @@ describe("AgentSession", () => {
 			systemPrompt: "Prompt.",
 		});
 
-		const onComplete = mock(() => {});
+		const onComplete = vi.fn(() => {});
 		const ext: Extension = (api) =>
 			api.on("session_start", (_event, ctx) => {
 				ctx.compact({ onComplete });
@@ -493,7 +493,7 @@ describe("AgentSession", () => {
 
 		await session.loadExtensions([ext]);
 		// session_start fires compact as fire-and-forget — wait a tick for it to resolve
-		await Bun.sleep(50);
+		await new Promise((r) => setTimeout(r, 50));
 
 		expect(onComplete).toHaveBeenCalledTimes(1);
 		expect(onComplete).toHaveBeenCalledWith({ summary: undefined });
@@ -510,7 +510,7 @@ describe("AgentSession", () => {
 			systemPrompt: "Prompt.",
 		});
 
-		const onComplete = mock(() => {});
+		const onComplete = vi.fn(() => {});
 		const ext: Extension = (api) => {
 			api.on("session_before_compact", () => {
 				return { compaction: { summary: "ext summary" } };
@@ -521,7 +521,7 @@ describe("AgentSession", () => {
 		};
 
 		await session.loadExtensions([ext]);
-		await Bun.sleep(50);
+		await new Promise((r) => setTimeout(r, 50));
 
 		expect(onComplete).toHaveBeenCalledTimes(1);
 		expect(onComplete).toHaveBeenCalledWith({ summary: "ext summary" });
@@ -530,7 +530,7 @@ describe("AgentSession", () => {
 	});
 
 	test("onError callback fires when compact fails via ExtensionContext.compact", async () => {
-		const { mock: mockFn } = await import("bun:test");
+		const mockFn = vi.fn;
 		const onError = mockFn(() => {});
 		const sm: SessionManager = {
 			appendMessage: mockFn(() => "1"),
@@ -557,7 +557,7 @@ describe("AgentSession", () => {
 			});
 
 		await session.loadExtensions([ext]);
-		await Bun.sleep(50);
+		await new Promise((r) => setTimeout(r, 50));
 
 		expect(onError).toHaveBeenCalledTimes(1);
 		expect(onError.mock.calls[0][0]).toBeInstanceOf(Error);
@@ -754,7 +754,7 @@ describe("AgentSession", () => {
 
 	describe("extension integration", () => {
 		test("loadExtensions fires session_start event", async () => {
-			const handler = mock(() => {});
+			const handler = vi.fn(() => {});
 			const ext: Extension = (api) => api.on("session_start", handler);
 
 			const session = new AgentSession({
@@ -772,7 +772,7 @@ describe("AgentSession", () => {
 		});
 
 		test("dispose fires session_shutdown event", async () => {
-			const handler = mock(() => {});
+			const handler = vi.fn(() => {});
 			const ext: Extension = (api) => api.on("session_shutdown", handler);
 
 			const session = new AgentSession({
@@ -808,7 +808,7 @@ describe("AgentSession", () => {
 		});
 
 		test("extension can register a command and it can be executed", async () => {
-			const handler = mock(async () => {});
+			const handler = vi.fn(async () => {});
 			const ext: Extension = (api) =>
 				api.registerCommand("test-cmd", {
 					description: "A test command",
@@ -836,7 +836,7 @@ describe("AgentSession", () => {
 		});
 
 		test("reload clears and reloads extensions", async () => {
-			const startHandler = mock(() => {});
+			const startHandler = vi.fn(() => {});
 			const ext: Extension = (api) => api.on("session_start", startHandler);
 
 			const session = new AgentSession({
@@ -857,7 +857,7 @@ describe("AgentSession", () => {
 		});
 
 		test("extensions passed via options are loaded by loadExtensions", async () => {
-			const handler = mock(() => {});
+			const handler = vi.fn(() => {});
 			const ext: Extension = (api) => api.on("session_start", handler);
 
 			const session = new AgentSession({
@@ -941,14 +941,14 @@ function createContextSessionManager(ctx: {
 }): SessionManager {
 	let entryCounter = 0;
 	return {
-		appendMessage: mock(() => String(++entryCounter)),
-		buildSessionContext: mock(() => ({ messages: [], ...ctx })),
-		compact: mock(() => String(++entryCounter)),
-		appendCustomEntry: mock(() => String(++entryCounter)),
-		appendCustomMessageEntry: mock(() => String(++entryCounter)),
-		appendModelChange: mock(() => String(++entryCounter)),
-		appendThinkingLevelChange: mock(() => String(++entryCounter)),
-		appendLabel: mock(() => String(++entryCounter)),
+		appendMessage: vi.fn(() => String(++entryCounter)),
+		buildSessionContext: vi.fn(() => ({ messages: [], ...ctx })),
+		compact: vi.fn(() => String(++entryCounter)),
+		appendCustomEntry: vi.fn(() => String(++entryCounter)),
+		appendCustomMessageEntry: vi.fn(() => String(++entryCounter)),
+		appendModelChange: vi.fn(() => String(++entryCounter)),
+		appendThinkingLevelChange: vi.fn(() => String(++entryCounter)),
+		appendLabel: vi.fn(() => String(++entryCounter)),
 	};
 }
 
@@ -1242,18 +1242,18 @@ describe("createAgentSession", () => {
 
 		let entryCounter = 0;
 		const sm: SessionManager = {
-			appendMessage: mock(() => String(++entryCounter)),
-			buildSessionContext: mock(() => ({
+			appendMessage: vi.fn(() => String(++entryCounter)),
+			buildSessionContext: vi.fn(() => ({
 				messages,
 				thinkingLevel: "off" as ThinkingLevel,
 				model: null,
 			})),
-			compact: mock(() => String(++entryCounter)),
-			appendCustomEntry: mock(() => String(++entryCounter)),
-			appendCustomMessageEntry: mock(() => String(++entryCounter)),
-			appendModelChange: mock(() => String(++entryCounter)),
-			appendThinkingLevelChange: mock(() => String(++entryCounter)),
-			appendLabel: mock(() => String(++entryCounter)),
+			compact: vi.fn(() => String(++entryCounter)),
+			appendCustomEntry: vi.fn(() => String(++entryCounter)),
+			appendCustomMessageEntry: vi.fn(() => String(++entryCounter)),
+			appendModelChange: vi.fn(() => String(++entryCounter)),
+			appendThinkingLevelChange: vi.fn(() => String(++entryCounter)),
+			appendLabel: vi.fn(() => String(++entryCounter)),
 		};
 
 		const { session } = await createAgentSession({

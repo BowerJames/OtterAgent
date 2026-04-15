@@ -4,12 +4,12 @@ This project is heavily inspired by [`@mariozechner/pi-coding-agent`](https://gi
 
 ## Repository Structure
 
-This is a Bun monorepo using workspaces. Packages live under `packages/`.
+This is an npm monorepo using workspaces. Packages live under `packages/`.
 
 ## Setup
 
 ```bash
-bun install
+npm install
 ```
 
 ## Build
@@ -17,14 +17,14 @@ bun install
 Build all packages:
 
 ```bash
-bun run build
+npm run build
 ```
 
 Build a specific package:
 
 ```bash
 cd packages/otter-agent
-bun run build
+npm run build
 ```
 
 ## Test
@@ -32,14 +32,14 @@ bun run build
 Run all tests:
 
 ```bash
-bun run test
+npm test
 ```
 
 Run tests for a specific package:
 
 ```bash
 cd packages/otter-agent
-bun test
+npx vitest run
 ```
 
 ## Lint
@@ -47,13 +47,13 @@ bun test
 Check for lint and formatting issues:
 
 ```bash
-bun run lint
+npm run lint
 ```
 
 Auto-fix lint and formatting issues:
 
 ```bash
-bun run lint:fix
+npm run lint:fix
 ```
 
 ## Format
@@ -61,7 +61,7 @@ bun run lint:fix
 Format all files:
 
 ```bash
-bun run format
+npm run format
 ```
 
 ## Code Review
@@ -75,5 +75,6 @@ Review the findings with the user before proceeding. If the reviewer raises issu
 - **ESM-only** — all packages use `"type": "module"`
 - **Strict TypeScript** — `strict: true` is enabled in all tsconfigs
 - **Biome** — used for linting and formatting (tabs, double quotes, semicolons)
+- **Vitest** — used for testing
 - Each package has its own `tsconfig.json` extending the root config
 - Build output goes to `dist/` in each package

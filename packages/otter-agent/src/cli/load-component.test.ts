@@ -1,6 +1,6 @@
-import { describe, expect, test } from "bun:test";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { describe, expect, test } from "vitest";
 import { ComponentConfigValidationError } from "../index.js";
 import {
 	ComponentConfigFileError,

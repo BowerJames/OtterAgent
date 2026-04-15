@@ -47,18 +47,18 @@ Verify that the implementation addresses every requirement mentioned in the issu
 ## Step 2 — Code Quality
 
 Run the linter and report any issues:
-- Run: cd /root/Projects/OtterAgent && bun run lint
+- Run: cd /root/Projects/OtterAgent && npm run lint
 
 ## Step 3 — Tests
 
 Run the full test suite and report results:
-- Run: cd /root/Projects/OtterAgent && bun run test
+- Run: cd /root/Projects/OtterAgent && npm test
 - Assess whether the test coverage is appropriate for the change
 
 ## Step 4 — Build
 
 Verify the project builds cleanly:
-- Run: cd /root/Projects/OtterAgent && bun run build
+- Run: cd /root/Projects/OtterAgent && npm run build
 
 ## Step 5 — Post review as a GitHub comment
 

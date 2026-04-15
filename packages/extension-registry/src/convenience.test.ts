@@ -5,7 +5,7 @@
  * via the default-registry tests. This catches regressions if convenience.ts
  * is accidentally changed to delegate to a different registry instance.
  */
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 import { buildExtension, getRegisteredNames, isRegistered } from "./convenience.js";
 
 describe("convenience functions", () => {

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { UIProvider } from "./index.js";
 import { NoOpUIProvider, createNoOpUIProvider } from "./no-op-ui-provider.js";
 

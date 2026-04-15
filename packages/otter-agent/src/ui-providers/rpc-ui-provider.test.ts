@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import type { ExtensionUIResponse, RpcOutboundMessage, RpcTransport } from "../rpc/types.js";
 import { UIProvider } from "./index.js";
 import { RpcUIProvider, createRpcUIProvider } from "./rpc-ui-provider.js";
@@ -30,8 +30,8 @@ describe("createRpcUIProvider", () => {
 	test("returns uiProvider, resolveResponse, and rejectAll", () => {
 		const { uiProvider, resolveResponse, rejectAll } = createRpcUIProvider(createMockTransport());
 		expect(uiProvider).toBeDefined();
-		expect(resolveResponse).toBeFunction();
-		expect(rejectAll).toBeFunction();
+		expect(resolveResponse).toBeTypeOf("function");
+		expect(rejectAll).toBeTypeOf("function");
 	});
 
 	// ─── dialog ──────────────────────────────────────────────────────
@@ -261,17 +261,17 @@ describe("UIProvider.rpc()", () => {
 	test("returns uiProvider, resolveResponse, and rejectAll", () => {
 		const { uiProvider, resolveResponse, rejectAll } = UIProvider.rpc(createMockTransport());
 		expect(uiProvider).toBeDefined();
-		expect(resolveResponse).toBeFunction();
-		expect(rejectAll).toBeFunction();
+		expect(resolveResponse).toBeTypeOf("function");
+		expect(rejectAll).toBeTypeOf("function");
 	});
 
 	test("uiProvider implements all UIProvider methods", () => {
 		const { uiProvider } = UIProvider.rpc(createMockTransport());
-		expect(uiProvider.dialog).toBeFunction();
-		expect(uiProvider.confirm).toBeFunction();
-		expect(uiProvider.input).toBeFunction();
-		expect(uiProvider.select).toBeFunction();
-		expect(uiProvider.notify).toBeFunction();
+		expect(uiProvider.dialog).toBeTypeOf("function");
+		expect(uiProvider.confirm).toBeTypeOf("function");
+		expect(uiProvider.input).toBeTypeOf("function");
+		expect(uiProvider.select).toBeTypeOf("function");
+		expect(uiProvider.notify).toBeTypeOf("function");
 	});
 
 	test("each call returns an independent instance", () => {

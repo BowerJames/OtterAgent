@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
+import { describe, expect, test } from "vitest";
 import type { ReadonlySessionManager } from "../interfaces/session-manager.js";
 import { COMPACTION_SUMMARY_PREFIX, COMPACTION_SUMMARY_SUFFIX } from "../session/messages.js";
 import {
@@ -111,7 +111,7 @@ describe("appendCustomMessageEntry", () => {
 		const afterInsert = Date.now();
 
 		// Small delay to ensure buildSessionContext runs at a later time.
-		await Bun.sleep(10);
+		await new Promise((r) => setTimeout(r, 10));
 
 		const { messages } = sm.buildSessionContext();
 		expect(messages).toHaveLength(1);

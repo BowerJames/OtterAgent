@@ -1,5 +1,5 @@
-import { describe, expect, mock, test } from "bun:test";
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
+import { describe, expect, test, vi } from "vitest";
 import type { ToolDefinition } from "../interfaces/tool-definition.js";
 import { ExtensionRunner } from "./extension-runner.js";
 import type { ExtensionRunnerActions } from "./extension-runner.js";
@@ -14,33 +14,33 @@ import type { ExtensionsAPI } from "./extensions-api.js";
  */
 function createMockActions(): ExtensionRunnerActions {
 	return {
-		registerTool: mock(() => {}),
-		getActiveToolNames: mock(() => []),
-		getAllToolDefinitions: mock(() => []),
-		setActiveToolsByName: mock(() => {}),
-		setModel: mock(async () => true),
-		getThinkingLevel: mock(() => "off" as const),
-		setThinkingLevel: mock(() => {}),
-		sendMessage: mock(() => {}),
-		sendUserMessage: mock(() => {}),
-		appendEntry: mock(() => {}),
-		setLabel: mock(() => {}),
-		getSessionManager: mock(() => ({})),
-		getAgentEnvironment: mock(() => ({
+		registerTool: vi.fn(() => {}),
+		getActiveToolNames: vi.fn(() => []),
+		getAllToolDefinitions: vi.fn(() => []),
+		setActiveToolsByName: vi.fn(() => {}),
+		setModel: vi.fn(async () => true),
+		getThinkingLevel: vi.fn(() => "off" as const),
+		setThinkingLevel: vi.fn(() => {}),
+		sendMessage: vi.fn(() => {}),
+		sendUserMessage: vi.fn(() => {}),
+		appendEntry: vi.fn(() => {}),
+		setLabel: vi.fn(() => {}),
+		getSessionManager: vi.fn(() => ({})),
+		getAgentEnvironment: vi.fn(() => ({
 			getSystemMessageAppend: () => undefined,
 			getTools: () => [],
 		})),
-		getModel: mock(() => undefined),
-		isIdle: mock(() => true),
-		getSignal: mock(() => undefined),
-		abort: mock(() => {}),
-		hasPendingMessages: mock(() => false),
-		shutdown: mock(() => {}),
-		getContextUsage: mock(() => undefined),
-		compact: mock(() => {}),
-		getSystemPrompt: mock(() => "system prompt"),
-		waitForIdle: mock(async () => {}),
-		reload: mock(async () => {}),
+		getModel: vi.fn(() => undefined),
+		isIdle: vi.fn(() => true),
+		getSignal: vi.fn(() => undefined),
+		abort: vi.fn(() => {}),
+		hasPendingMessages: vi.fn(() => false),
+		shutdown: vi.fn(() => {}),
+		getContextUsage: vi.fn(() => undefined),
+		compact: vi.fn(() => {}),
+		getSystemPrompt: vi.fn(() => "system prompt"),
+		waitForIdle: vi.fn(async () => {}),
+		reload: vi.fn(async () => {}),
 	};
 }
 
@@ -72,7 +72,7 @@ describe("ExtensionRunner", () => {
 	describe("loading", () => {
 		test("loads a sync extension", async () => {
 			const runner = createRunner();
-			const fn = mock(() => {});
+			const fn = vi.fn(() => {});
 			await runner.loadExtensions([(api) => fn(api)]);
 
 			expect(fn).toHaveBeenCalledTimes(1);
@@ -81,7 +81,7 @@ describe("ExtensionRunner", () => {
 
 		test("loads an async extension", async () => {
 			const runner = createRunner();
-			const fn = mock(async () => {});
+			const fn = vi.fn(async () => {});
 			await runner.loadExtensions([async (api) => fn(api)]);
 
 			expect(fn).toHaveBeenCalledTimes(1);
@@ -89,10 +89,10 @@ describe("ExtensionRunner", () => {
 
 		test("extension that throws is caught and reported via onError", async () => {
 			const runner = createRunner();
-			const errorListener = mock(() => {});
+			const errorListener = vi.fn(() => {});
 			runner.onError(errorListener);
 
-			const good = mock(() => {});
+			const good = vi.fn(() => {});
 			const bad: Extension = () => {
 				throw new Error("boom");
 			};
@@ -164,7 +164,7 @@ describe("ExtensionRunner", () => {
 				promptSnippet: "ext_tool",
 				promptGuidelines: [],
 				parameters: {},
-				execute: mock(async () => ({
+				execute: vi.fn(async () => ({
 					content: [{ type: "text" as const, text: "ok" }],
 					details: undefined,
 				})),
@@ -200,7 +200,7 @@ describe("ExtensionRunner", () => {
 
 		test("errors in one handler do not stop subsequent handlers", async () => {
 			const runner = createRunner();
-			const errorListener = mock(() => {});
+			const errorListener = vi.fn(() => {});
 			runner.onError(errorListener);
 			const calls: number[] = [];
 
@@ -294,7 +294,7 @@ describe("ExtensionRunner", () => {
 
 		test("first block short-circuits", async () => {
 			const runner = createRunner();
-			const secondCalled = mock(() => {});
+			const secondCalled = vi.fn(() => {});
 
 			await runner.loadExtensions([
 				(api) =>
@@ -412,7 +412,7 @@ describe("ExtensionRunner", () => {
 
 		test("continue action does not short-circuit", async () => {
 			const runner = createRunner();
-			const secondCalled = mock(() => ({ action: "handled" as const }));
+			const secondCalled = vi.fn(() => ({ action: "handled" as const }));
 
 			await runner.loadExtensions([
 				(api) =>
@@ -436,7 +436,7 @@ describe("ExtensionRunner", () => {
 
 		test("transform action returns immediately", async () => {
 			const runner = createRunner();
-			const secondCalled = mock(() => {});
+			const secondCalled = vi.fn(() => {});
 
 			await runner.loadExtensions([
 				(api) =>
@@ -601,7 +601,7 @@ describe("ExtensionRunner", () => {
 
 		test("cancel short-circuits", async () => {
 			const runner = createRunner();
-			const secondCalled = mock(() => {});
+			const secondCalled = vi.fn(() => {});
 
 			await runner.loadExtensions([
 				(api) =>
@@ -724,7 +724,7 @@ describe("ExtensionRunner", () => {
 	describe("commands", () => {
 		test("extension can register and execute a command", async () => {
 			const runner = createRunner();
-			const handler = mock(async () => {});
+			const handler = vi.fn(async () => {});
 
 			await runner.loadExtensions([
 				(api) =>
@@ -752,7 +752,7 @@ describe("ExtensionRunner", () => {
 
 		test("command handler errors are caught and reported via onError", async () => {
 			const runner = createRunner();
-			const errorListener = mock(() => {});
+			const errorListener = vi.fn(() => {});
 			runner.onError(errorListener);
 
 			await runner.loadExtensions([
@@ -777,7 +777,7 @@ describe("ExtensionRunner", () => {
 	describe("reload", () => {
 		test("clear removes all handlers and commands", async () => {
 			const runner = createRunner();
-			const handler = mock(() => {});
+			const handler = vi.fn(() => {});
 
 			await runner.loadExtensions([
 				(api) => api.on("session_start", handler),
@@ -798,7 +798,7 @@ describe("ExtensionRunner", () => {
 
 		test("clear stops events from firing", async () => {
 			const runner = createRunner();
-			const handler = mock(() => {});
+			const handler = vi.fn(() => {});
 
 			await runner.loadExtensions([(api) => api.on("agent_start", handler)]);
 
@@ -813,8 +813,8 @@ describe("ExtensionRunner", () => {
 
 		test("re-loading after clear registers fresh handlers", async () => {
 			const runner = createRunner();
-			const handler1 = mock(() => {});
-			const handler2 = mock(() => {});
+			const handler1 = vi.fn(() => {});
+			const handler2 = vi.fn(() => {});
 
 			await runner.loadExtensions([(api) => api.on("session_start", handler1)]);
 
@@ -865,8 +865,8 @@ describe("ExtensionRunner", () => {
 	describe("error handling", () => {
 		test("onError returns unsubscribe function", async () => {
 			const runner = createRunner();
-			const listener1 = mock(() => {});
-			const listener2 = mock(() => {});
+			const listener1 = vi.fn(() => {});
+			const listener2 = vi.fn(() => {});
 
 			const unsub = runner.onError(listener1);
 			runner.onError(listener2);
@@ -896,7 +896,7 @@ describe("ExtensionRunner", () => {
 	describe("ExtensionContext", () => {
 		test("agentEnvironment is exposed to event handlers", async () => {
 			const mockActions = createMockActions();
-			mockActions.getAgentEnvironment = mock(() => ({
+			mockActions.getAgentEnvironment = vi.fn(() => ({
 				getSystemMessageAppend: () => "test-append",
 				getTools: () => [],
 			}));
@@ -926,7 +926,7 @@ describe("ExtensionRunner", () => {
 				getSystemMessageAppend: () => undefined,
 				getTools: () => [],
 			};
-			mockActions.getAgentEnvironment = mock(() => expectedEnv);
+			mockActions.getAgentEnvironment = vi.fn(() => expectedEnv);
 
 			const runner = new ExtensionRunner();
 			runner.bindActions(mockActions);
@@ -950,7 +950,7 @@ describe("ExtensionRunner", () => {
 				getSystemMessageAppend: () => "cmd-context",
 				getTools: () => [],
 			};
-			mockActions.getAgentEnvironment = mock(() => expectedEnv);
+			mockActions.getAgentEnvironment = vi.fn(() => expectedEnv);
 
 			const runner = new ExtensionRunner();
 			runner.bindActions(mockActions);

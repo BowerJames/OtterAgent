@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
 import { EventEmitter } from "node:events";
+import { describe, expect, test } from "vitest";
 import { attachJsonlLineReader, serializeJsonLine } from "./jsonl.js";
 
 describe("serializeJsonLine", () => {

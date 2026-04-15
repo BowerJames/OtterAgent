@@ -1,5 +1,27 @@
-import { describe, expect, test } from "bun:test";
+import { spawn } from "node:child_process";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, test } from "vitest";
 import { parseCliArgs } from "./args.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const cliPath = resolve(__dirname, "../../dist/cli/cli.js");
+
+function runCli(args: string[]): Promise<{ exitCode: number | null; stderr: string }> {
+	return new Promise((resolve, reject) => {
+		const proc = spawn("node", [cliPath, ...args], {
+			stdio: ["pipe", "pipe", "pipe"],
+		});
+		let stderr = "";
+		proc.stderr?.on("data", (data) => {
+			stderr += data;
+		});
+		proc.on("close", (code) => {
+			resolve({ exitCode: code, stderr });
+		});
+		proc.on("error", reject);
+	});
+}
 
 describe("parseCliArgs", () => {
 	const baseArgs = [
@@ -27,126 +49,81 @@ describe("parseCliArgs", () => {
 	});
 
 	test("exits when --provider is missing", async () => {
-		const cliPath = new URL("../../dist/cli/cli.js", import.meta.url).pathname;
-		const proc = Bun.spawn(
-			[
-				"bun",
-				"run",
-				cliPath,
-				"--model",
-				"claude-sonnet-4-5-20250514",
-				"--session-manager-config",
-				"./sm.yaml",
-				"--auth-storage-config",
-				"./auth.yaml",
-				"--agent-environment-config",
-				"./env.yaml",
-			],
-			{ stderr: "pipe" },
-		);
-		await proc.exited;
-		expect(proc.exitCode).toBe(1);
-		const stderr = await new Response(proc.stderr).text();
+		const { exitCode, stderr } = await runCli([
+			"--model",
+			"claude-sonnet-4-5-20250514",
+			"--session-manager-config",
+			"./sm.yaml",
+			"--auth-storage-config",
+			"./auth.yaml",
+			"--agent-environment-config",
+			"./env.yaml",
+		]);
+		expect(exitCode).toBe(1);
 		expect(stderr).toContain("--provider is required");
 	});
 
 	test("exits when --model is missing", async () => {
-		const cliPath = new URL("../../dist/cli/cli.js", import.meta.url).pathname;
-		const proc = Bun.spawn(
-			[
-				"bun",
-				"run",
-				cliPath,
-				"--provider",
-				"anthropic",
-				"--session-manager-config",
-				"./sm.yaml",
-				"--auth-storage-config",
-				"./auth.yaml",
-				"--agent-environment-config",
-				"./env.yaml",
-			],
-			{ stderr: "pipe" },
-		);
-		await proc.exited;
-		expect(proc.exitCode).toBe(1);
-		const stderr = await new Response(proc.stderr).text();
+		const { exitCode, stderr } = await runCli([
+			"--provider",
+			"anthropic",
+			"--session-manager-config",
+			"./sm.yaml",
+			"--auth-storage-config",
+			"./auth.yaml",
+			"--agent-environment-config",
+			"./env.yaml",
+		]);
+		expect(exitCode).toBe(1);
 		expect(stderr).toContain("--model is required");
 	});
 
 	test("exits when --session-manager-config is missing", async () => {
-		const cliPath = new URL("../../dist/cli/cli.js", import.meta.url).pathname;
-		const proc = Bun.spawn(
-			[
-				"bun",
-				"run",
-				cliPath,
-				"--provider",
-				"anthropic",
-				"--model",
-				"claude-sonnet-4-5-20250514",
-				"--auth-storage-config",
-				"./auth.yaml",
-				"--agent-environment-config",
-				"./env.yaml",
-			],
-			{ stderr: "pipe" },
-		);
-		await proc.exited;
-		expect(proc.exitCode).toBe(1);
-		const stderr = await new Response(proc.stderr).text();
+		const { exitCode, stderr } = await runCli([
+			"--provider",
+			"anthropic",
+			"--model",
+			"claude-sonnet-4-5-20250514",
+			"--auth-storage-config",
+			"./auth.yaml",
+			"--agent-environment-config",
+			"./env.yaml",
+		]);
+		expect(exitCode).toBe(1);
 		expect(stderr).toContain("--session-manager-config is required");
 	});
 
 	test("exits when --agent-environment-config is missing", async () => {
-		const cliPath = new URL("../../dist/cli/cli.js", import.meta.url).pathname;
-		const proc = Bun.spawn(
-			[
-				"bun",
-				"run",
-				cliPath,
-				"--provider",
-				"anthropic",
-				"--model",
-				"claude-sonnet-4-5-20250514",
-				"--session-manager-config",
-				"./sm.yaml",
-				"--auth-storage-config",
-				"./auth.yaml",
-			],
-			{ stderr: "pipe" },
-		);
-		await proc.exited;
-		expect(proc.exitCode).toBe(1);
-		const stderr = await new Response(proc.stderr).text();
+		const { exitCode, stderr } = await runCli([
+			"--provider",
+			"anthropic",
+			"--model",
+			"claude-sonnet-4-5-20250514",
+			"--session-manager-config",
+			"./sm.yaml",
+			"--auth-storage-config",
+			"./auth.yaml",
+		]);
+		expect(exitCode).toBe(1);
 		expect(stderr).toContain("--agent-environment-config is required");
 	});
 
 	test("exits when --api-key and --auth-storage-config are both provided", async () => {
-		const cliPath = new URL("../../dist/cli/cli.js", import.meta.url).pathname;
-		const proc = Bun.spawn(
-			[
-				"bun",
-				"run",
-				cliPath,
-				"--provider",
-				"anthropic",
-				"--model",
-				"claude-sonnet-4-5-20250514",
-				"--api-key",
-				"sk-test",
-				"--session-manager-config",
-				"./sm.yaml",
-				"--auth-storage-config",
-				"./auth.yaml",
-				"--agent-environment-config",
-				"./env.yaml",
-			],
-			{ stderr: "pipe" },
-		);
-		await proc.exited;
-		expect(proc.exitCode).toBe(1);
-		const stderr = await new Response(proc.stderr).text();
+		const { exitCode, stderr } = await runCli([
+			"--provider",
+			"anthropic",
+			"--model",
+			"claude-sonnet-4-5-20250514",
+			"--api-key",
+			"sk-test",
+			"--session-manager-config",
+			"./sm.yaml",
+			"--auth-storage-config",
+			"./auth.yaml",
+			"--agent-environment-config",
+			"./env.yaml",
+		]);
+		expect(exitCode).toBe(1);
 		expect(stderr).toContain("mutually exclusive");
 	});
 
@@ -272,24 +249,14 @@ describe("parseCliArgs", () => {
 		});
 
 		test("exits when -e is the last argument with no value", async () => {
-			const cliPath = new URL("../../dist/cli/cli.js", import.meta.url).pathname;
-			const proc = Bun.spawn(["bun", "run", cliPath, ...baseArgs, "-e"], {
-				stderr: "pipe",
-			});
-			await proc.exited;
-			expect(proc.exitCode).toBe(1);
-			const stderr = await new Response(proc.stderr).text();
+			const { exitCode, stderr } = await runCli([...baseArgs, "-e"]);
+			expect(exitCode).toBe(1);
 			expect(stderr).toContain("requires a path argument");
 		});
 
 		test("exits when --extension is the last argument with no value", async () => {
-			const cliPath = new URL("../../dist/cli/cli.js", import.meta.url).pathname;
-			const proc = Bun.spawn(["bun", "run", cliPath, ...baseArgs, "--extension"], {
-				stderr: "pipe",
-			});
-			await proc.exited;
-			expect(proc.exitCode).toBe(1);
-			const stderr = await new Response(proc.stderr).text();
+			const { exitCode, stderr } = await runCli([...baseArgs, "--extension"]);
+			expect(exitCode).toBe(1);
 			expect(stderr).toContain("requires a path argument");
 		});
 
