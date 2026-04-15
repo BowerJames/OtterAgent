@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { buildAuthStorageFromEnv } from "./auth.js";
 
 describe("buildAuthStorageFromEnv", () => {
@@ -15,7 +15,8 @@ describe("buildAuthStorageFromEnv", () => {
 
 	test("returns undefined for providers with no env var set", async () => {
 		const originalKey = process.env.OPENAI_API_KEY;
-		process.env.OPENAI_API_KEY = undefined;
+		// biome-ignore lint/performance/noDelete: assignment to undefined sets the string "undefined" in Node.js
+		delete process.env.OPENAI_API_KEY;
 		try {
 			const storage = buildAuthStorageFromEnv();
 			expect(await storage.getApiKey("openai")).toBeUndefined();

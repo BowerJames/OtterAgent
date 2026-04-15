@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 /**
  * RPC REPL — interactive multi-turn conversation with the otter agent.
  *
@@ -7,14 +7,17 @@
  * tool calls, and extension UI requests.
  *
  * Usage:
- *   bun scripts/rpc-repl.ts --provider anthropic --model claude-sonnet-4-5-20250514
- *   bun scripts/rpc-repl.ts --provider openai --model gpt-4o --thinking high
- *   bun scripts/rpc-repl.ts --provider anthropic --model claude-sonnet-4-5-20250514 --show-events message_update,tool_execution_start
+ *   npx tsx scripts/rpc-repl.ts --provider anthropic --model claude-sonnet-4-5-20250514
+ *   npx tsx scripts/rpc-repl.ts --provider openai --model gpt-4o --thinking high
+ *   npx tsx scripts/rpc-repl.ts --provider anthropic --model claude-sonnet-4-5-20250514 --show-events message_update,tool_execution_start
  */
 
 import { spawn } from "node:child_process";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { createInterface } from "node:readline";
+import { fileURLToPath } from "node:url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // ─── ANSI helpers (no external deps) ──────────────────────────────────
 
@@ -64,7 +67,7 @@ function printHelp(): void {
 ${bold("otter RPC REPL — interactive multi-turn conversation")}
 
 ${bold("Usage:")}
-  bun scripts/rpc-repl.ts [options]
+  npx tsx scripts/rpc-repl.ts [options]
 
 ${bold("Options:")}
   --provider <name>         LLM provider (e.g. anthropic, openai, google). Required.
@@ -422,15 +425,7 @@ async function main(): Promise<void> {
 	const eventFilter = args.showEvents;
 
 	// Resolve the otter binary path
-	const cliPath = resolve(
-		import.meta.dir,
-		"..",
-		"packages",
-		"otter-agent",
-		"dist",
-		"cli",
-		"cli.js",
-	);
+	const cliPath = resolve(__dirname, "..", "packages", "otter-agent", "dist", "cli", "cli.js");
 
 	// Build the CLI command arguments
 	const childArgs = ["--provider", args.provider, "--model", args.model];

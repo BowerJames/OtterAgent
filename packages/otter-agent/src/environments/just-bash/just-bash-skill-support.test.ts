@@ -1,4 +1,4 @@
-import { describe, expect, spyOn, test } from "bun:test";
+import { describe, expect, test, vi } from "vitest";
 import { isSkillSupportedAgentEnvironment } from "../../interfaces/skill-supported-agent-environment.js";
 import {
 	JustBashAgentEnvironment,
@@ -66,7 +66,7 @@ describe("addSkill — name validation", () => {
 
 	test("rejects empty name", () => {
 		const env = makeEnv();
-		const spy = spyOn(console, "warn").mockImplementation(() => {});
+		const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
 		expect(env.addSkill({ name: "", description: "desc", content: "content" })).toBe(false);
 		expect(spy).toHaveBeenCalled();
 		spy.mockRestore();
@@ -74,7 +74,7 @@ describe("addSkill — name validation", () => {
 
 	test("rejects name exceeding 64 characters", () => {
 		const env = makeEnv();
-		const spy = spyOn(console, "warn").mockImplementation(() => {});
+		const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
 		const name = "a".repeat(65);
 		expect(env.addSkill({ name, description: "desc", content: "content" })).toBe(false);
 		expect(spy).toHaveBeenCalled();
@@ -83,7 +83,7 @@ describe("addSkill — name validation", () => {
 
 	test("rejects uppercase letters", () => {
 		const env = makeEnv();
-		const spy = spyOn(console, "warn").mockImplementation(() => {});
+		const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
 		expect(env.addSkill({ name: "MySkill", description: "desc", content: "content" })).toBe(false);
 		expect(spy).toHaveBeenCalled();
 		spy.mockRestore();
@@ -91,7 +91,7 @@ describe("addSkill — name validation", () => {
 
 	test("rejects name with leading hyphen", () => {
 		const env = makeEnv();
-		const spy = spyOn(console, "warn").mockImplementation(() => {});
+		const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
 		expect(env.addSkill({ name: "-skill", description: "desc", content: "content" })).toBe(false);
 		expect(spy).toHaveBeenCalled();
 		spy.mockRestore();
@@ -99,7 +99,7 @@ describe("addSkill — name validation", () => {
 
 	test("rejects name with trailing hyphen", () => {
 		const env = makeEnv();
-		const spy = spyOn(console, "warn").mockImplementation(() => {});
+		const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
 		expect(env.addSkill({ name: "skill-", description: "desc", content: "content" })).toBe(false);
 		expect(spy).toHaveBeenCalled();
 		spy.mockRestore();
@@ -107,7 +107,7 @@ describe("addSkill — name validation", () => {
 
 	test("rejects name with consecutive hyphens", () => {
 		const env = makeEnv();
-		const spy = spyOn(console, "warn").mockImplementation(() => {});
+		const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
 		expect(env.addSkill({ name: "my--skill", description: "desc", content: "content" })).toBe(
 			false,
 		);
@@ -117,7 +117,7 @@ describe("addSkill — name validation", () => {
 
 	test("rejects name with spaces", () => {
 		const env = makeEnv();
-		const spy = spyOn(console, "warn").mockImplementation(() => {});
+		const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
 		expect(env.addSkill({ name: "my skill", description: "desc", content: "content" })).toBe(false);
 		expect(spy).toHaveBeenCalled();
 		spy.mockRestore();
@@ -125,7 +125,7 @@ describe("addSkill — name validation", () => {
 
 	test("invalid name does not crash or throw", () => {
 		const env = makeEnv();
-		const spy = spyOn(console, "warn").mockImplementation(() => {});
+		const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
 		expect(() =>
 			env.addSkill({ name: "INVALID!", description: "desc", content: "x" }),
 		).not.toThrow();
@@ -202,7 +202,7 @@ describe("addSkill / getSkills / getSkillContent", () => {
 
 	test("invalid skill is not added to getSkills()", () => {
 		const env = makeEnv();
-		const spy = spyOn(console, "warn").mockImplementation(() => {});
+		const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
 		env.addSkill({ name: "INVALID", description: "desc", content: "x" });
 		expect(env.getSkills()).toHaveLength(0);
 		spy.mockRestore();
@@ -275,7 +275,7 @@ describe("getSkillFilePath", () => {
 
 	test("returns undefined after only invalid skills were added", () => {
 		const env = makeEnv({ cwd: "/workspace" });
-		const spy = spyOn(console, "warn").mockImplementation(() => {});
+		const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
 		env.addSkill({ name: "INVALID", description: "desc", content: "x" });
 		expect(env.getSkillFilePath("INVALID")).toBeUndefined();
 		spy.mockRestore();

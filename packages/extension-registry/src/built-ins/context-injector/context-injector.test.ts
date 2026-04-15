@@ -1,8 +1,8 @@
+import { validateComponentConfig } from "@otter-agent/core";
 /**
  * Tests for the ContextInjector built-in extension template.
  */
-import { describe, expect, it } from "bun:test";
-import { validateComponentConfig } from "@otter-agent/core";
+import { describe, expect, it } from "vitest";
 import {
 	type ContextInjectorConfig,
 	ContextInjectorConfigSchema,

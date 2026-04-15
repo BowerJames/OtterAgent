@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
 import { Type } from "@sinclair/typebox";
+import { describe, expect, test } from "vitest";
 import type { ToolDefinition } from "../interfaces/tool-definition.js";
 import { buildSystemPrompt, buildToolSection } from "./system-prompt.js";
 

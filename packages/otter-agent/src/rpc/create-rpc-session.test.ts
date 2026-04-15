@@ -1,4 +1,4 @@
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, test, vi } from "vitest";
 import type { AgentEnvironment } from "../interfaces/agent-environment.js";
 import type { AuthStorage } from "../interfaces/auth-storage.js";
 import type { SessionManager } from "../interfaces/session-manager.js";
@@ -10,20 +10,20 @@ import type { ExtensionUIResponse, RpcOutboundMessage, RpcTransport } from "./ty
 function createMockSessionManager(): SessionManager {
 	let entryCounter = 0;
 	return {
-		appendMessage: mock(() => String(++entryCounter)),
-		buildSessionContext: mock(() => ({ messages: [], thinkingLevel: "off", model: null })),
-		compact: mock(() => String(++entryCounter)),
-		appendCustomEntry: mock(() => String(++entryCounter)),
-		appendCustomMessageEntry: mock(() => String(++entryCounter)),
-		appendModelChange: mock(() => String(++entryCounter)),
-		appendThinkingLevelChange: mock(() => String(++entryCounter)),
-		appendLabel: mock(() => String(++entryCounter)),
+		appendMessage: vi.fn(() => String(++entryCounter)),
+		buildSessionContext: vi.fn(() => ({ messages: [], thinkingLevel: "off", model: null })),
+		compact: vi.fn(() => String(++entryCounter)),
+		appendCustomEntry: vi.fn(() => String(++entryCounter)),
+		appendCustomMessageEntry: vi.fn(() => String(++entryCounter)),
+		appendModelChange: vi.fn(() => String(++entryCounter)),
+		appendThinkingLevelChange: vi.fn(() => String(++entryCounter)),
+		appendLabel: vi.fn(() => String(++entryCounter)),
 	};
 }
 
 function createMockAuthStorage(): AuthStorage {
 	return {
-		getApiKey: mock(async () => "test-api-key"),
+		getApiKey: vi.fn(async () => "test-api-key"),
 	};
 }
 
@@ -50,7 +50,7 @@ function createMockTransport(): MockTransport {
 		send(message) {
 			transport.sent.push(message);
 		},
-		close: mock(() => {}),
+		close: vi.fn(() => {}),
 		inject(message) {
 			transport.messageHandler?.(message);
 		},
@@ -227,7 +227,7 @@ describe("createRpcSession", () => {
 
 	test("onShutdown is threaded through to handler", async () => {
 		const transport = createMockTransport();
-		const onShutdown = mock(() => {});
+		const onShutdown = vi.fn(() => {});
 
 		const { handler } = await createRpcSession({
 			transport,

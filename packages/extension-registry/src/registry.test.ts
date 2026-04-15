@@ -1,9 +1,9 @@
-import { describe, expect, it } from "bun:test";
 import { validateComponentConfig } from "@otter-agent/core";
 /**
  * Tests for ExtensionRegistry.
  */
 import { Type } from "@sinclair/typebox";
+import { describe, expect, it } from "vitest";
 import { ExtensionRegistry, ExtensionRegistryError } from "./registry.js";
 
 // Minimal test template

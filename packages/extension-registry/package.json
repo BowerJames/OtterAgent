@@ -12,13 +12,12 @@
 	},
 	"scripts": {
 		"clean": "rm -rf dist",
-		"prebuild": "bun run clean",
 		"build": "tsc",
-		"test": "bun test",
+		"test": "vitest run",
 		"dev": "tsc --watch"
 	},
 	"dependencies": {
-		"@otter-agent/core": "workspace:*",
+		"@otter-agent/core": "*",
 		"@sinclair/typebox": "^0.34.0"
 	}
 }

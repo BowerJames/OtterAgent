@@ -1,8 +1,8 @@
-import { Database } from "bun:sqlite";
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import DatabaseConstructor from "better-sqlite3";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { AuthStorage } from "./index.js";
 import { SqliteAuthStorage, createSqliteAuthStorage } from "./sqlite-auth-storage.js";
 
@@ -37,7 +37,7 @@ function insertKey(
 	provider: string,
 	apiKey: string,
 ): void {
-	const db = new Database(dbPath);
+	const db = new DatabaseConstructor(dbPath);
 	db.exec("PRAGMA journal_mode=WAL");
 	db.exec(`
 		CREATE TABLE IF NOT EXISTS "${tableName}" (
@@ -269,7 +269,7 @@ describe("constructor validation", () => {
 
 	test("custom valid table name works", async () => {
 		const path = dbPath();
-		const db = new Database(path);
+		const db = new DatabaseConstructor(path);
 		db.exec("PRAGMA journal_mode=WAL");
 		db.exec(`
 			CREATE TABLE IF NOT EXISTS "my_keys" (

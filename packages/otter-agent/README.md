@@ -20,13 +20,6 @@ npm install @otter-agent/core
 npm install github:BowerJames/OtterAgent#packages/otter-agent
 ```
 
-npm runs the `prepare` script automatically after install, which builds the package. **Bun users** must build manually:
-
-```bash
-bun install
-bun run build
-```
-
 ### Local / monorepo workspace
 
 In your `package.json`:
@@ -34,10 +27,12 @@ In your `package.json`:
 ```json
 {
   "dependencies": {
-    "@otter-agent/core": "workspace:*"
+    "@otter-agent/core": "*"
   }
 }
 ```
+
+> **Note:** When `@otter-agent/core` is published to npm, replace `"*"` with a proper semver range (e.g. `"^0.0.1"`).
 
 ## Quick Start
 

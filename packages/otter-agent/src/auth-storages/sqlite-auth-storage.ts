@@ -1,4 +1,5 @@
-import { Database } from "bun:sqlite";
+import DatabaseConstructor from "better-sqlite3";
+type Database = InstanceType<typeof DatabaseConstructor>;
 import { Type } from "@sinclair/typebox";
 import type { AuthStorage } from "../interfaces/auth-storage.js";
 import type { ComponentTemplate } from "../interfaces/component-template.js";
@@ -50,7 +51,7 @@ function validateStorageId(storageId: string): void {
  * — keys must be inserted into the database externally (e.g., by a setup script
  * or migration).
  *
- * Uses `bun:sqlite` for synchronous, high-performance access. WAL journal
+ * Uses `better-sqlite3` for synchronous, high-performance access. WAL journal
  * mode is enabled for safe concurrent reads.
  *
  * @example
@@ -79,7 +80,7 @@ export class SqliteAuthStorage implements AuthStorage {
 		validateTableName(tableName);
 		validateStorageId(options.storageId);
 
-		this.db = new Database(options.dbPath, { create: true });
+		this.db = new DatabaseConstructor(options.dbPath);
 		this.storageId = options.storageId;
 		this.tableName = tableName;
 

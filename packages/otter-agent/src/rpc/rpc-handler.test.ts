@@ -1,4 +1,4 @@
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, test, vi } from "vitest";
 import type { AgentEnvironment } from "../interfaces/agent-environment.js";
 import type { AuthStorage } from "../interfaces/auth-storage.js";
 import type { SessionManager } from "../interfaces/session-manager.js";
@@ -19,20 +19,20 @@ import type {
 function createMockSessionManager(): SessionManager {
 	let entryCounter = 0;
 	return {
-		appendMessage: mock(() => String(++entryCounter)),
-		buildSessionContext: mock(() => ({ messages: [], thinkingLevel: "off", model: null })),
-		compact: mock(() => String(++entryCounter)),
-		appendCustomEntry: mock(() => String(++entryCounter)),
-		appendCustomMessageEntry: mock(() => String(++entryCounter)),
-		appendModelChange: mock(() => String(++entryCounter)),
-		appendThinkingLevelChange: mock(() => String(++entryCounter)),
-		appendLabel: mock(() => String(++entryCounter)),
+		appendMessage: vi.fn(() => String(++entryCounter)),
+		buildSessionContext: vi.fn(() => ({ messages: [], thinkingLevel: "off", model: null })),
+		compact: vi.fn(() => String(++entryCounter)),
+		appendCustomEntry: vi.fn(() => String(++entryCounter)),
+		appendCustomMessageEntry: vi.fn(() => String(++entryCounter)),
+		appendModelChange: vi.fn(() => String(++entryCounter)),
+		appendThinkingLevelChange: vi.fn(() => String(++entryCounter)),
+		appendLabel: vi.fn(() => String(++entryCounter)),
 	};
 }
 
 function createMockAuthStorage(): AuthStorage {
 	return {
-		getApiKey: mock(async () => "test-api-key"),
+		getApiKey: vi.fn(async () => "test-api-key"),
 	};
 }
 
@@ -59,7 +59,7 @@ function createMockTransport(): MockTransport {
 		send(message) {
 			transport.sent.push(message);
 		},
-		close: mock(() => {}),
+		close: vi.fn(() => {}),
 		inject(message) {
 			transport.messageHandler?.(message);
 		},
@@ -216,8 +216,8 @@ describe("RpcHandler", () => {
 	});
 
 	test("routes extension_ui_response to resolveUIResponse callback", async () => {
-		const resolveUIResponse = mock((_response: ExtensionUIResponse) => {});
-		const rejectAllUI = mock((_reason: string) => {});
+		const resolveUIResponse = vi.fn((_response: ExtensionUIResponse) => {});
+		const rejectAllUI = vi.fn((_reason: string) => {});
 		const transport = createMockTransport();
 		const session = new AgentSession({
 			sessionManager: createMockSessionManager(),
@@ -249,8 +249,8 @@ describe("RpcHandler", () => {
 	});
 
 	test("stop calls rejectAllUI callback", async () => {
-		const rejectAllUI = mock((_reason: string) => {});
-		const resolveUIResponse = mock((_response: ExtensionUIResponse) => {});
+		const rejectAllUI = vi.fn((_reason: string) => {});
+		const resolveUIResponse = vi.fn((_response: ExtensionUIResponse) => {});
 		const transport = createMockTransport();
 		const { uiProvider } = createRpcUIProvider(transport);
 		const session = new AgentSession({
@@ -276,7 +276,7 @@ describe("RpcHandler", () => {
 	});
 
 	test("deferred shutdown triggers graceful shutdown after next command", async () => {
-		const onShutdown = mock(() => {});
+		const onShutdown = vi.fn(() => {});
 		const transport = createMockTransport();
 		const { uiProvider, resolveResponse, rejectAll } = createRpcUIProvider(transport);
 		const session = new AgentSession({
@@ -308,7 +308,7 @@ describe("RpcHandler", () => {
 	test("steer sends user message to session", async () => {
 		const { transport, session, handler } = createTestSetup();
 
-		const steerSpy = mock(() => {});
+		const steerSpy = vi.fn(() => {});
 		session.steer = steerSpy as typeof session.steer;
 
 		transport.inject({ type: "steer", id: "req_8", message: "Go faster" });
@@ -325,7 +325,7 @@ describe("RpcHandler", () => {
 	test("follow_up sends user message to session", async () => {
 		const { transport, session, handler } = createTestSetup();
 
-		const followUpSpy = mock(() => {});
+		const followUpSpy = vi.fn(() => {});
 		session.followUp = followUpSpy as typeof session.followUp;
 
 		transport.inject({ type: "follow_up", id: "req_9", message: "What next?" });
@@ -354,7 +354,7 @@ describe("RpcHandler", () => {
 	});
 
 	test("dispatches unknown command type to extension commands", async () => {
-		const commandHandler = mock(async () => {});
+		const commandHandler = vi.fn(async () => {});
 		const transport = createMockTransport();
 		const { uiProvider, resolveResponse, rejectAll } = createRpcUIProvider(transport);
 		const session = new AgentSession({
@@ -455,7 +455,7 @@ describe("RpcHandler", () => {
 
 describe("RpcHandler graceful shutdown", () => {
 	test("shutdown command responds with success after shutdown completes", async () => {
-		const onShutdown = mock(() => {});
+		const onShutdown = vi.fn(() => {});
 		const transport = createMockTransport();
 		const { uiProvider, resolveResponse, rejectAll } = createRpcUIProvider(transport);
 		const session = new AgentSession({
@@ -488,10 +488,10 @@ describe("RpcHandler graceful shutdown", () => {
 	});
 
 	test("shutdown triggers dispose, stop, and onShutdown", async () => {
-		const onShutdown = mock(() => {});
+		const onShutdown = vi.fn(() => {});
 		const transport = createMockTransport();
 		const { uiProvider, resolveResponse, rejectAll } = createRpcUIProvider(transport);
-		const rejectAllSpy = mock((_reason: string) => rejectAll(_reason));
+		const rejectAllSpy = vi.fn((_reason: string) => rejectAll(_reason));
 		const session = new AgentSession({
 			sessionManager: createMockSessionManager(),
 			authStorage: createMockAuthStorage(),
@@ -522,7 +522,7 @@ describe("RpcHandler graceful shutdown", () => {
 
 	test("onShutdown is called after the shutdown command response is sent", async () => {
 		const order: string[] = [];
-		const onShutdown = mock(() => {
+		const onShutdown = vi.fn(() => {
 			order.push("onShutdown");
 		});
 		const transport = createMockTransport();
@@ -557,7 +557,7 @@ describe("RpcHandler graceful shutdown", () => {
 	});
 
 	test("requestShutdown is idempotent", async () => {
-		const onShutdown = mock(() => {});
+		const onShutdown = vi.fn(() => {});
 		const transport = createMockTransport();
 		const { uiProvider, resolveResponse, rejectAll } = createRpcUIProvider(transport);
 		const session = new AgentSession({
@@ -590,7 +590,7 @@ describe("RpcHandler graceful shutdown", () => {
 
 describe("AgentSession slash command interception", () => {
 	test("executes registered extension command on /prefix", async () => {
-		const commandHandler = mock(async () => {});
+		const commandHandler = vi.fn(async () => {});
 
 		const session = new AgentSession({
 			sessionManager: createMockSessionManager(),

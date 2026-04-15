@@ -1,8 +1,7 @@
 /**
  * Tests for AgentSession skill command registration and skill invocation XML.
  */
-import { describe, expect, test } from "bun:test";
-import { mock } from "bun:test";
+import { describe, expect, test, vi } from "vitest";
 import type { Extension } from "../extension-core/extension.js";
 import type { AgentEnvironment } from "../interfaces/agent-environment.js";
 import type { AuthStorage } from "../interfaces/auth-storage.js";
@@ -18,20 +17,24 @@ import { buildSkillInvocationXml } from "./skill-invocation.js";
 function createMockSessionManager(): SessionManager {
 	let entryCounter = 0;
 	return {
-		appendMessage: mock(() => String(++entryCounter)),
-		buildSessionContext: mock(() => ({ messages: [], thinkingLevel: "off" as const, model: null })),
-		compact: mock(() => String(++entryCounter)),
-		appendCustomEntry: mock(() => String(++entryCounter)),
-		appendCustomMessageEntry: mock(() => String(++entryCounter)),
-		appendModelChange: mock(() => String(++entryCounter)),
-		appendThinkingLevelChange: mock(() => String(++entryCounter)),
-		appendLabel: mock(() => String(++entryCounter)),
+		appendMessage: vi.fn(() => String(++entryCounter)),
+		buildSessionContext: vi.fn(() => ({
+			messages: [],
+			thinkingLevel: "off" as const,
+			model: null,
+		})),
+		compact: vi.fn(() => String(++entryCounter)),
+		appendCustomEntry: vi.fn(() => String(++entryCounter)),
+		appendCustomMessageEntry: vi.fn(() => String(++entryCounter)),
+		appendModelChange: vi.fn(() => String(++entryCounter)),
+		appendThinkingLevelChange: vi.fn(() => String(++entryCounter)),
+		appendLabel: vi.fn(() => String(++entryCounter)),
 	};
 }
 
 function createMockAuthStorage(): AuthStorage {
 	return {
-		getApiKey: mock(async () => "test-api-key"),
+		getApiKey: vi.fn(async () => "test-api-key"),
 	};
 }
 

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { InMemoryAuthStorage, createInMemoryAuthStorage } from "./in-memory-auth-storage.js";
 import { AuthStorage } from "./index.js";
 
