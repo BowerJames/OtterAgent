@@ -1,5 +1,5 @@
-import type { AuthStorage } from "@otter-agent/core";
-import { createInMemoryAuthStorage } from "@otter-agent/core";
+import type { AuthStorage } from "../index.js";
+import { createInMemoryAuthStorage } from "../index.js";
 
 /**
  * Standard environment variable names for LLM provider API keys.

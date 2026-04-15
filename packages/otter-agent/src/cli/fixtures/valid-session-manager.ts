@@ -1,5 +1,5 @@
-import { InMemorySessionManager } from "@otter-agent/core";
-import type { ComponentTemplate } from "@otter-agent/core";
+import { InMemorySessionManager } from "../../index.js";
+import type { ComponentTemplate } from "../../index.js";
 import { Type } from "@sinclair/typebox";
 
 /**

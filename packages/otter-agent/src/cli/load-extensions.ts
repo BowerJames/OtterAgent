@@ -1,4 +1,4 @@
-import type { Extension } from "@otter-agent/core";
+import type { Extension } from "../index.js";
 import { ComponentConfigValidationError, loadComponent } from "./load-component.js";
 
 /**

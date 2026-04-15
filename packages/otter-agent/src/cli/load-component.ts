@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { dirname, extname, isAbsolute, resolve } from "node:path";
-import type { ComponentTemplate } from "@otter-agent/core";
-import { ComponentConfigValidationError, validateComponentConfig } from "@otter-agent/core";
 import type { TSchema } from "@sinclair/typebox";
 import { parse as parseYaml } from "yaml";
+import type { ComponentTemplate } from "../index.js";
+import { ComponentConfigValidationError, validateComponentConfig } from "../index.js";
 
 /**
  * Parsed component config entry.

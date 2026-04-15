@@ -27,7 +27,7 @@ describe("parseCliArgs", () => {
 	});
 
 	test("exits when --provider is missing", async () => {
-		const cliPath = new URL("../dist/cli.js", import.meta.url).pathname;
+		const cliPath = new URL("../../dist/cli/cli.js", import.meta.url).pathname;
 		const proc = Bun.spawn(
 			[
 				"bun",
@@ -51,7 +51,7 @@ describe("parseCliArgs", () => {
 	});
 
 	test("exits when --model is missing", async () => {
-		const cliPath = new URL("../dist/cli.js", import.meta.url).pathname;
+		const cliPath = new URL("../../dist/cli/cli.js", import.meta.url).pathname;
 		const proc = Bun.spawn(
 			[
 				"bun",
@@ -75,7 +75,7 @@ describe("parseCliArgs", () => {
 	});
 
 	test("exits when --session-manager-config is missing", async () => {
-		const cliPath = new URL("../dist/cli.js", import.meta.url).pathname;
+		const cliPath = new URL("../../dist/cli/cli.js", import.meta.url).pathname;
 		const proc = Bun.spawn(
 			[
 				"bun",
@@ -99,7 +99,7 @@ describe("parseCliArgs", () => {
 	});
 
 	test("exits when --agent-environment-config is missing", async () => {
-		const cliPath = new URL("../dist/cli.js", import.meta.url).pathname;
+		const cliPath = new URL("../../dist/cli/cli.js", import.meta.url).pathname;
 		const proc = Bun.spawn(
 			[
 				"bun",
@@ -123,7 +123,7 @@ describe("parseCliArgs", () => {
 	});
 
 	test("exits when --api-key and --auth-storage-config are both provided", async () => {
-		const cliPath = new URL("../dist/cli.js", import.meta.url).pathname;
+		const cliPath = new URL("../../dist/cli/cli.js", import.meta.url).pathname;
 		const proc = Bun.spawn(
 			[
 				"bun",
@@ -272,7 +272,7 @@ describe("parseCliArgs", () => {
 		});
 
 		test("exits when -e is the last argument with no value", async () => {
-			const cliPath = new URL("../dist/cli.js", import.meta.url).pathname;
+			const cliPath = new URL("../../dist/cli/cli.js", import.meta.url).pathname;
 			const proc = Bun.spawn(["bun", "run", cliPath, ...baseArgs, "-e"], {
 				stderr: "pipe",
 			});
@@ -283,7 +283,7 @@ describe("parseCliArgs", () => {
 		});
 
 		test("exits when --extension is the last argument with no value", async () => {
-			const cliPath = new URL("../dist/cli.js", import.meta.url).pathname;
+			const cliPath = new URL("../../dist/cli/cli.js", import.meta.url).pathname;
 			const proc = Bun.spawn(["bun", "run", cliPath, ...baseArgs, "--extension"], {
 				stderr: "pipe",
 			});

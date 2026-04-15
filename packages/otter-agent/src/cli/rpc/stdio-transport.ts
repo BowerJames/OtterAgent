@@ -1,4 +1,4 @@
-import type { RpcInboundMessage, RpcOutboundMessage, RpcTransport } from "@otter-agent/core";
+import type { RpcInboundMessage, RpcOutboundMessage, RpcTransport } from "../../index.js";
 import { attachJsonlLineReader, serializeJsonLine } from "./jsonl.js";
 
 /**
