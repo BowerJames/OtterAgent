@@ -422,7 +422,15 @@ async function main(): Promise<void> {
 	const eventFilter = args.showEvents;
 
 	// Resolve the otter binary path
-	const cliPath = resolve(import.meta.dir, "..", "packages", "otter-agent-cli", "dist", "cli.js");
+	const cliPath = resolve(
+		import.meta.dir,
+		"..",
+		"packages",
+		"otter-agent",
+		"dist",
+		"cli",
+		"cli.js",
+	);
 
 	// Build the CLI command arguments
 	const childArgs = ["--provider", args.provider, "--model", args.model];

@@ -1,5 +1,5 @@
-import type { AgentEnvironment, AuthStorage, SessionManager } from "@otter-agent/core";
-import { ModelRegistry } from "@otter-agent/core";
+import type { AgentEnvironment, AuthStorage, SessionManager } from "../index.js";
+import { ModelRegistry } from "../index.js";
 import { parseCliArgs, printHelp } from "./args.js";
 import { buildAuthStorageFromEnv } from "./auth.js";
 import {

@@ -1,5 +1,5 @@
-import type { CreateRpcSessionOptions } from "@otter-agent/core";
-import { createRpcSession } from "@otter-agent/core";
+import type { CreateRpcSessionOptions } from "../../index.js";
+import { createRpcSession } from "../../index.js";
 import { StdioTransport } from "./stdio-transport.js";
 
 /**
