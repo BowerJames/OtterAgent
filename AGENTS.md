@@ -2,6 +2,11 @@
 
 This project is heavily inspired by [`@mariozechner/pi-coding-agent`](https://github.com/mariozechner/pi-coding-agent), which is included as a dev dependency. Its source code and documentation should be explored whenever planning new features or edits to understand patterns, architecture, and best practices.
 
+## Additional Development CLI Tools
+
+- `gh` - GitHub CLI. Used for GitHub operations (creating PRs, viewing issues, etc.).
+- `tmux` - tmux is a terminal multiplexer: it enables a number of terminals to be created, accessed, and controlled from a single screen. tmux may be detached from a screen and continue running in the background, then later reattached. 
+
 ## Repository Structure
 
 This is a Bun monorepo using workspaces. Packages live under `packages/`.
@@ -65,14 +70,15 @@ bun run format
 ```
 
 ## Code Review
+To launch an independent code review run:
 
-Before pushing to `main` or opening a pull request when completing a GitHub issue, an independent review must be run using the **code-review** skill:
-
+```bash
+mypi --profile reviewer "/review <issue_number> <target_branch>"
 ```
-/skill:code-review <issue-number>
-```
 
-Review the findings with the user before proceeding. If the reviewer raises issues, fix them and re-run the review to confirm before pushing.
+Where <issue_number> is the number of the issue being reviewed and <target_branch> is the name of the branch the work has been done on.
+
+The code review can take a long time so provide a timeout of 1000 seconds.
 
 ## Conventions
 

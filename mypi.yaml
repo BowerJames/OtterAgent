@@ -1,0 +1,12 @@
+default: assistant
+profiles:
+  assistant:
+    cmd: pi
+    extensions:
+      - mode
+    prompts:
+      - overview
+  reviewer:
+    cmd: pi -p
+    prompts:
+      - review
