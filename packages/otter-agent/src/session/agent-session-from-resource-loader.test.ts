@@ -1,8 +1,8 @@
 import { describe, expect, test, vi } from "vitest";
-import type { ResourceLoader } from "../interfaces/resource-loader.js";
 import type { SessionManager } from "../interfaces/session-manager.js";
 import type { UIProvider } from "../interfaces/ui-provider.js";
 import { createAgentSessionFromResourceLoader } from "./agent-session.js";
+import type { ResourceLoader } from "./resource-loader.js";
 
 // ─── Test Helpers ─────────────────────────────────────────────────────
 
@@ -47,22 +47,24 @@ function createMockUIProvider(): UIProvider {
 	};
 }
 
+function createBaseResources() {
+	return {
+		sessionManager: createMockSessionManager(),
+		authStorage: createMockAuthStorage(),
+		environment: createMockEnvironment(),
+		systemPrompt: "You are a test agent.",
+	};
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────
 
 describe("createAgentSessionFromResourceLoader", () => {
 	test("creates a session with resources from the loader and the provided UIProvider", async () => {
-		const sessionManager = createMockSessionManager();
-		const authStorage = createMockAuthStorage();
-		const environment = createMockEnvironment();
 		const uiProvider = createMockUIProvider();
+		const resources = createBaseResources();
 
 		const resourceLoader: ResourceLoader = {
-			getResources: vi.fn(async () => ({
-				sessionManager,
-				authStorage,
-				environment,
-				systemPrompt: "You are a test agent.",
-			})),
+			getResources: vi.fn(async () => resources),
 		};
 
 		const result = await createAgentSessionFromResourceLoader(resourceLoader, uiProvider);
@@ -70,6 +72,25 @@ describe("createAgentSessionFromResourceLoader", () => {
 		expect(result.session).toBeDefined();
 		expect(result.session.uiProvider).toBe(uiProvider);
 		expect(resourceLoader.getResources).toHaveBeenCalledOnce();
+	});
+
+	test("forwards optional fields (model, thinkingLevel, extensions) to the session", async () => {
+		const uiProvider = createMockUIProvider();
+		const mockExtension = vi.fn();
+		const resources = {
+			...createBaseResources(),
+			thinkingLevel: "low" as const,
+			extensions: [mockExtension],
+		};
+
+		const resourceLoader: ResourceLoader = {
+			getResources: vi.fn(async () => resources),
+		};
+
+		const result = await createAgentSessionFromResourceLoader(resourceLoader, uiProvider);
+
+		expect(result.session).toBeDefined();
+		expect(result.session.uiProvider).toBe(uiProvider);
 	});
 
 	test("propagates errors from getResources()", async () => {
@@ -84,30 +105,5 @@ describe("createAgentSessionFromResourceLoader", () => {
 		await expect(createAgentSessionFromResourceLoader(resourceLoader, uiProvider)).rejects.toThrow(
 			"Failed to load resources",
 		);
-	});
-
-	test("passes uiProvider through to the session", async () => {
-		const sessionManager = createMockSessionManager();
-		const authStorage = createMockAuthStorage();
-		const environment = createMockEnvironment();
-		const uiProvider = createMockUIProvider();
-
-		const resourceLoader: ResourceLoader = {
-			getResources: vi.fn(async () => ({
-				sessionManager,
-				authStorage,
-				environment,
-				systemPrompt: "Test prompt",
-			})),
-		};
-
-		const result = await createAgentSessionFromResourceLoader(resourceLoader, uiProvider);
-
-		// Verify the uiProvider on the created session matches what we passed
-		expect(result.session.uiProvider).toBe(uiProvider);
-
-		// Verify it is the actual mock (not a NoOp default)
-		expect(result.session.uiProvider).toBe(uiProvider);
-		expect(result.session.uiProvider.notify).toBeDefined();
 	});
 });

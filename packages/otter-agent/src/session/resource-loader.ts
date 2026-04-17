@@ -1,4 +1,4 @@
-import type { CreateAgentSessionOptions } from "../session/agent-session.js";
+import type { CreateAgentSessionOptions } from "./agent-session.js";
 
 /**
  * Provides the resources needed to create an agent session.
