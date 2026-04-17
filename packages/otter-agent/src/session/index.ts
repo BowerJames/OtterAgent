@@ -1,4 +1,8 @@
-export { AgentSession, createAgentSession } from "./agent-session.js";
+export {
+	AgentSession,
+	createAgentSession,
+	createAgentSessionFromResourceLoader,
+} from "./agent-session.js";
 export type {
 	AgentSessionEvent,
 	AgentSessionOptions,

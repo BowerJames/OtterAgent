@@ -17,6 +17,7 @@ import type { ExtensionRunnerActions } from "../extension-core/extension-runner.
 import type { Extension } from "../extension-core/extension.js";
 import type { AgentEnvironment } from "../interfaces/agent-environment.js";
 import type { AuthStorage } from "../interfaces/auth-storage.js";
+import type { ResourceLoader } from "../interfaces/resource-loader.js";
 import type { EntryId, SessionManager } from "../interfaces/session-manager.js";
 import { isSkillSupportedAgentEnvironment } from "../interfaces/skill-supported-agent-environment.js";
 import type { ToolDefinition } from "../interfaces/tool-definition.js";
@@ -109,6 +110,21 @@ export async function createAgentSession(
 		messages: sessionContext.messages,
 	});
 	return { session };
+}
+
+/**
+ * Async factory that creates an AgentSession from a ResourceLoader and UIProvider.
+ *
+ * Delegates resource loading to the ResourceLoader, then passes the
+ * assembled options (including the caller-supplied UIProvider) to
+ * {@link createAgentSession}.
+ */
+export async function createAgentSessionFromResourceLoader(
+	resourceLoader: ResourceLoader,
+	uiProvider: UIProvider,
+): Promise<CreateAgentSessionResult> {
+	const resources = await resourceLoader.getResources();
+	return createAgentSession({ ...resources, uiProvider });
 }
 
 /** Options for creating an AgentSession. */
