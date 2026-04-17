@@ -3,6 +3,7 @@ profiles:
   assistant:
     cmd: pi
     extensions:
+      - review-agent-trajectory
       - mode
     prompts:
       - overview
@@ -10,3 +11,7 @@ profiles:
     cmd: pi -p
     prompts:
       - review
+  review-agent-trajectory:
+    cmd: pi -p
+    prompts:
+      - review-agent-trajectory
