@@ -6,6 +6,7 @@ export type {
 	Entry,
 	EntryId,
 	ReadonlySessionManager,
+	ResourceLoader,
 	SessionContext,
 	SessionManagerTemplate,
 	SkillDefinition,
@@ -126,6 +127,7 @@ export {
 export {
 	AgentSession,
 	buildSystemPrompt,
+	createAgentSessionFromResourceLoader,
 	buildToolSection,
 	convertToLlm,
 	createAgentSession,

@@ -17,4 +17,5 @@ export type { SkillDefinition } from "./skill-definition.js";
 export type { SkillSupportedAgentEnvironment } from "./skill-supported-agent-environment.js";
 export { isSkillSupportedAgentEnvironment } from "./skill-supported-agent-environment.js";
 export type { ToolDefinition } from "./tool-definition.js";
+export type { ResourceLoader } from "./resource-loader.js";
 export type { UIProvider } from "./ui-provider.js";
