@@ -1,8 +1,8 @@
 import { describe, expect, test, vi } from "vitest";
+import type { ResourceLoader } from "../interfaces/resource-loader.js";
 import type { SessionManager } from "../interfaces/session-manager.js";
 import type { UIProvider } from "../interfaces/ui-provider.js";
 import { createAgentSessionFromResourceLoader } from "./agent-session.js";
-import type { ResourceLoader } from "./resource-loader.js";
 
 // ─── Test Helpers ─────────────────────────────────────────────────────
 
@@ -74,7 +74,7 @@ describe("createAgentSessionFromResourceLoader", () => {
 		expect(resourceLoader.getResources).toHaveBeenCalledOnce();
 	});
 
-	test("forwards optional fields (model, thinkingLevel, extensions) to the session", async () => {
+	test("forwards optional fields (thinkingLevel, extensions) to the session", async () => {
 		const uiProvider = createMockUIProvider();
 		const mockExtension = vi.fn();
 		const resources = {
@@ -90,7 +90,10 @@ describe("createAgentSessionFromResourceLoader", () => {
 		const result = await createAgentSessionFromResourceLoader(resourceLoader, uiProvider);
 
 		expect(result.session).toBeDefined();
-		expect(result.session.uiProvider).toBe(uiProvider);
+		// No model resolved, so thinkingLevel is kept as provided
+		expect(result.session.agent.state.thinkingLevel).toBe("low");
+		// Verify the resources were passed through to createAgentSession
+		expect(resourceLoader.getResources).toHaveBeenCalledOnce();
 	});
 
 	test("propagates errors from getResources()", async () => {

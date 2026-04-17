@@ -17,6 +17,7 @@ import type { ExtensionRunnerActions } from "../extension-core/extension-runner.
 import type { Extension } from "../extension-core/extension.js";
 import type { AgentEnvironment } from "../interfaces/agent-environment.js";
 import type { AuthStorage } from "../interfaces/auth-storage.js";
+import type { ResourceLoader } from "../interfaces/resource-loader.js";
 import type { EntryId, SessionManager } from "../interfaces/session-manager.js";
 import { isSkillSupportedAgentEnvironment } from "../interfaces/skill-supported-agent-environment.js";
 import type { ToolDefinition } from "../interfaces/tool-definition.js";
@@ -24,7 +25,6 @@ import type { UIProvider } from "../interfaces/ui-provider.js";
 import { createNoOpUIProvider } from "../ui-providers/no-op-ui-provider.js";
 import { convertToLlm } from "./messages.js";
 import { ModelRegistry } from "./model-registry.js";
-import type { ResourceLoader } from "./resource-loader.js";
 import { buildSkillInvocationXml } from "./skill-invocation.js";
 import { buildSystemPrompt } from "./system-prompt.js";
 import { wrapToolDefinition } from "./tool-wrapper.js";

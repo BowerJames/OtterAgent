@@ -6,6 +6,7 @@ export type {
 	Entry,
 	EntryId,
 	ReadonlySessionManager,
+	ResourceLoader,
 	SessionContext,
 	SessionManagerTemplate,
 	SkillDefinition,
@@ -126,10 +127,10 @@ export {
 export {
 	AgentSession,
 	buildSystemPrompt,
-	createAgentSession,
-	createAgentSessionFromResourceLoader,
 	buildToolSection,
 	convertToLlm,
+	createAgentSession,
+	createAgentSessionFromResourceLoader,
 	createCompactionSummaryMessage,
 	createCustomMessage,
 	ModelRegistry,
@@ -142,7 +143,6 @@ export type {
 	CompactionSummaryMessage,
 	CreateAgentSessionOptions,
 	CreateAgentSessionResult,
-	ResourceLoader,
 	CustomMessage,
 } from "./session/index.js";
 
