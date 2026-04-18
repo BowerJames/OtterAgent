@@ -142,18 +142,18 @@ export class SqliteSessionManager implements SessionManager {
 
 	// ── SessionManager interface ─────────────────────────────────────────────
 
-	appendMessage(message: AgentMessage): EntryId {
+	async appendMessage(message: AgentMessage): Promise<EntryId> {
 		this.assertNotClosed();
 		const id = crypto.randomUUID();
 		return this.insert({ type: "message", id, message });
 	}
 
-	appendCustomMessageEntry(
+	async appendCustomMessageEntry(
 		customType: string,
 		content: string | (TextContent | ImageContent)[],
 		display: boolean,
 		details?: unknown,
-	): EntryId {
+	): Promise<EntryId> {
 		this.assertNotClosed();
 		const id = crypto.randomUUID();
 		return this.insert({
@@ -167,30 +167,33 @@ export class SqliteSessionManager implements SessionManager {
 		});
 	}
 
-	appendCustomEntry(customType: string, data?: unknown): EntryId {
+	async appendCustomEntry(customType: string, data?: unknown): Promise<EntryId> {
 		this.assertNotClosed();
 		const id = crypto.randomUUID();
 		return this.insert({ type: "customEntry", id, customType, data });
 	}
 
-	appendModelChange(model: { provider: string; modelId: string }, thinkingLevel: string): EntryId {
+	async appendModelChange(
+		model: { provider: string; modelId: string },
+		thinkingLevel: string,
+	): Promise<EntryId> {
 		this.assertNotClosed();
 		const id = crypto.randomUUID();
 		return this.insert({ type: "modelChange", id, model, thinkingLevel });
 	}
 
-	appendThinkingLevelChange(thinkingLevel: string): EntryId {
+	async appendThinkingLevelChange(thinkingLevel: string): Promise<EntryId> {
 		this.assertNotClosed();
 		const id = crypto.randomUUID();
 		return this.insert({ type: "thinkingLevelChange", id, thinkingLevel });
 	}
 
-	compact(
+	async compact(
 		summary?: string,
 		firstKeptEntryId?: EntryId,
 		tokensBefore = 0,
 		details?: unknown,
-	): EntryId {
+	): Promise<EntryId> {
 		this.assertNotClosed();
 		const id = crypto.randomUUID();
 		return this.insert({
@@ -203,17 +206,17 @@ export class SqliteSessionManager implements SessionManager {
 		});
 	}
 
-	appendLabel(label: string, targetEntryId: EntryId): EntryId {
+	async appendLabel(label: string, targetEntryId: EntryId): Promise<EntryId> {
 		this.assertNotClosed();
 		const id = crypto.randomUUID();
 		return this.insert({ type: "label", id, label, targetEntryId });
 	}
 
-	getEntries(): Entry[] {
+	async getEntries(): Promise<Entry[]> {
 		return this.loadEntries();
 	}
 
-	buildSessionContext(): SessionContext {
+	async buildSessionContext(): Promise<SessionContext> {
 		this.assertNotClosed();
 		const entries = this.loadEntries();
 

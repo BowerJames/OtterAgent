@@ -62,7 +62,7 @@ export async function createAgentSession(
 	const registry = new ModelRegistry(authStorage);
 
 	// 2. Get saved session state.
-	const sessionContext = sessionManager.buildSessionContext();
+	const sessionContext = await sessionManager.buildSessionContext();
 
 	// 3. Resolve effective model: explicit option > session context > undefined.
 	let model = options.model;
@@ -90,7 +90,7 @@ export async function createAgentSession(
 		const modelChanged =
 			!ctxModel || ctxModel.provider !== model.provider || ctxModel.modelId !== model.id;
 		if (modelChanged) {
-			sessionManager.appendModelChange(
+			await sessionManager.appendModelChange(
 				{ provider: model.provider, modelId: model.id },
 				thinkingLevel,
 			);
@@ -99,7 +99,7 @@ export async function createAgentSession(
 
 	// 8. Persist thinking level change if it differs from session context.
 	if (thinkingLevel !== sessionContext.thinkingLevel) {
-		sessionManager.appendThinkingLevelChange(thinkingLevel);
+		await sessionManager.appendThinkingLevelChange(thinkingLevel);
 	}
 
 	// 9. Construct and return.
@@ -407,7 +407,7 @@ export class AgentSession {
 		const hasAuth = await this.modelRegistry.hasAuth(model);
 		if (!hasAuth) return false;
 		this.agent.setModel(model);
-		this.sessionManager.appendModelChange(
+		await this.sessionManager.appendModelChange(
 			{ provider: model.provider, modelId: model.id },
 			this.agent.state.thinkingLevel,
 		);
@@ -415,9 +415,9 @@ export class AgentSession {
 	}
 
 	/** Set the thinking level. */
-	setThinkingLevel(level: ThinkingLevel): void {
+	async setThinkingLevel(level: ThinkingLevel): Promise<void> {
 		this.agent.setThinkingLevel(level);
-		this.sessionManager.appendThinkingLevelChange(level);
+		await this.sessionManager.appendThinkingLevelChange(level);
 	}
 
 	// ─── Tool Management ──────────────────────────────────────────────
@@ -507,10 +507,10 @@ export class AgentSession {
 		// else: default compaction — no summary, no firstKeptEntryId (full clear).
 
 		// 5. Record compaction in session manager.
-		this.sessionManager.compact(summary, firstKeptEntryId, 0);
+		await this.sessionManager.compact(summary, firstKeptEntryId, 0);
 
 		// 6. Rebuild agent messages from session context to sync state.
-		const { messages } = this.sessionManager.buildSessionContext();
+		const { messages } = await this.sessionManager.buildSessionContext();
 		this.agent.replaceMessages(messages);
 
 		// 7. Fire session_compact event.
@@ -543,10 +543,10 @@ export class AgentSession {
 		}
 	}
 
-	private _handleAgentEvent = (event: AgentEvent): void => {
+	private _handleAgentEvent = async (event: AgentEvent): Promise<void> => {
 		// Persist messages to session manager
 		if (event.type === "message_end") {
-			this.sessionManager.appendMessage(event.message);
+			await this.sessionManager.appendMessage(event.message);
 		}
 
 		// Forward agent events to extension handlers
@@ -623,7 +623,7 @@ export class AgentSession {
 					details: message.details,
 					timestamp: Date.now(),
 				};
-				this.sessionManager.appendCustomMessageEntry(
+				void this.sessionManager.appendCustomMessageEntry(
 					message.customType,
 					message.content,
 					message.display,
@@ -650,11 +650,11 @@ export class AgentSession {
 				}
 			},
 			appendEntry: (customType, data) => {
-				this.sessionManager.appendCustomEntry(customType, data);
+				void this.sessionManager.appendCustomEntry(customType, data);
 			},
 			setLabel: (entryId: EntryId, label: string | undefined) => {
 				if (label !== undefined) {
-					this.sessionManager.appendLabel(label, entryId);
+					void this.sessionManager.appendLabel(label, entryId);
 				}
 			},
 			getSessionManager: () => this.sessionManager,

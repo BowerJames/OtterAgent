@@ -29,9 +29,9 @@ function makeAssistantMessage(text: string): AgentMessage {
 // ─── buildSessionContext defaults ─────────────────────────────────────────────
 
 describe("buildSessionContext — empty session", () => {
-	test("returns empty messages, thinkingLevel 'off', and null model", () => {
+	test("returns empty messages, thinkingLevel 'off', and null model", async () => {
 		const sm = createInMemorySessionManager();
-		const ctx = sm.buildSessionContext();
+		const ctx = await sm.buildSessionContext();
 		expect(ctx.messages).toEqual([]);
 		expect(ctx.thinkingLevel).toBe("off");
 		expect(ctx.model).toBeNull();
@@ -41,22 +41,22 @@ describe("buildSessionContext — empty session", () => {
 // ─── appendMessage ────────────────────────────────────────────────────────────
 
 describe("appendMessage", () => {
-	test("returns a unique EntryId", () => {
+	test("returns a unique EntryId", async () => {
 		const sm = createInMemorySessionManager();
-		const id1 = sm.appendMessage(makeUserMessage("hello"));
-		const id2 = sm.appendMessage(makeAssistantMessage("hi"));
+		const id1 = await sm.appendMessage(makeUserMessage("hello"));
+		const id2 = await sm.appendMessage(makeAssistantMessage("hi"));
 		expect(id1).toBeTruthy();
 		expect(id2).toBeTruthy();
 		expect(id1).not.toBe(id2);
 	});
 
-	test("messages appear in buildSessionContext in order", () => {
+	test("messages appear in buildSessionContext in order", async () => {
 		const sm = createInMemorySessionManager();
 		const m1 = makeUserMessage("first");
 		const m2 = makeAssistantMessage("second");
-		sm.appendMessage(m1);
-		sm.appendMessage(m2);
-		const { messages } = sm.buildSessionContext();
+		await sm.appendMessage(m1);
+		await sm.appendMessage(m2);
+		const { messages } = await sm.buildSessionContext();
 		expect(messages).toHaveLength(2);
 		expect(messages[0]).toEqual(m1);
 		expect(messages[1]).toEqual(m2);
@@ -66,16 +66,16 @@ describe("appendMessage", () => {
 // ─── appendCustomMessageEntry ─────────────────────────────────────────────────
 
 describe("appendCustomMessageEntry", () => {
-	test("returns a unique EntryId", () => {
+	test("returns a unique EntryId", async () => {
 		const sm = createInMemorySessionManager();
-		const id = sm.appendCustomMessageEntry("ext-1", "hello", true);
+		const id = await sm.appendCustomMessageEntry("ext-1", "hello", true);
 		expect(id).toBeTruthy();
 	});
 
-	test("content is included in buildSessionContext messages as custom role", () => {
+	test("content is included in buildSessionContext messages as custom role", async () => {
 		const sm = createInMemorySessionManager();
-		sm.appendCustomMessageEntry("ext-1", "injected content", true);
-		const { messages } = sm.buildSessionContext();
+		await sm.appendCustomMessageEntry("ext-1", "injected content", true);
+		const { messages } = await sm.buildSessionContext();
 		expect(messages).toHaveLength(1);
 		expect(messages[0].role).toBe("custom");
 		// @ts-expect-error — accessing custom role field
@@ -86,19 +86,19 @@ describe("appendCustomMessageEntry", () => {
 		expect(messages[0].display).toBe(true);
 	});
 
-	test("details are stored and exposed on the message", () => {
+	test("details are stored and exposed on the message", async () => {
 		const sm = createInMemorySessionManager();
-		sm.appendCustomMessageEntry("ext-1", "msg", false, { foo: "bar" });
-		const { messages } = sm.buildSessionContext();
+		await sm.appendCustomMessageEntry("ext-1", "msg", false, { foo: "bar" });
+		const { messages } = await sm.buildSessionContext();
 		// @ts-expect-error — accessing custom role field
 		expect(messages[0].details).toEqual({ foo: "bar" });
 	});
 
-	test("content as array of content blocks is preserved", () => {
+	test("content as array of content blocks is preserved", async () => {
 		const sm = createInMemorySessionManager();
 		const content = [{ type: "text" as const, text: "block" }];
-		sm.appendCustomMessageEntry("ext-1", content, false);
-		const { messages } = sm.buildSessionContext();
+		await sm.appendCustomMessageEntry("ext-1", content, false);
+		const { messages } = await sm.buildSessionContext();
 		// @ts-expect-error — accessing custom role field
 		expect(messages[0].content).toEqual(content);
 	});
@@ -107,13 +107,13 @@ describe("appendCustomMessageEntry", () => {
 		const sm = createInMemorySessionManager();
 
 		const beforeInsert = Date.now();
-		sm.appendCustomMessageEntry("ext-1", "original content", true);
+		await sm.appendCustomMessageEntry("ext-1", "original content", true);
 		const afterInsert = Date.now();
 
 		// Small delay to ensure buildSessionContext runs at a later time.
 		await new Promise((r) => setTimeout(r, 10));
 
-		const { messages } = sm.buildSessionContext();
+		const { messages } = await sm.buildSessionContext();
 		expect(messages).toHaveLength(1);
 		// @ts-expect-error — accessing custom role field
 		const timestamp = messages[0].timestamp as number;
@@ -125,16 +125,16 @@ describe("appendCustomMessageEntry", () => {
 // ─── appendCustomEntry ────────────────────────────────────────────────────────
 
 describe("appendCustomEntry", () => {
-	test("returns a unique EntryId", () => {
+	test("returns a unique EntryId", async () => {
 		const sm = createInMemorySessionManager();
-		const id = sm.appendCustomEntry("ext-1", { state: true });
+		const id = await sm.appendCustomEntry("ext-1", { state: true });
 		expect(id).toBeTruthy();
 	});
 
-	test("does NOT appear in buildSessionContext messages", () => {
+	test("does NOT appear in buildSessionContext messages", async () => {
 		const sm = createInMemorySessionManager();
-		sm.appendCustomEntry("ext-1", { state: true });
-		const { messages } = sm.buildSessionContext();
+		await sm.appendCustomEntry("ext-1", { state: true });
+		const { messages } = await sm.buildSessionContext();
 		expect(messages).toHaveLength(0);
 	});
 });
@@ -142,38 +142,38 @@ describe("appendCustomEntry", () => {
 // ─── appendModelChange ────────────────────────────────────────────────────────
 
 describe("appendModelChange", () => {
-	test("returns a unique EntryId", () => {
+	test("returns a unique EntryId", async () => {
 		const sm = createInMemorySessionManager();
-		const id = sm.appendModelChange({ provider: "anthropic", modelId: "claude-opus" }, "off");
+		const id = await sm.appendModelChange({ provider: "anthropic", modelId: "claude-opus" }, "off");
 		expect(id).toBeTruthy();
 	});
 
-	test("does NOT appear in buildSessionContext messages", () => {
+	test("does NOT appear in buildSessionContext messages", async () => {
 		const sm = createInMemorySessionManager();
-		sm.appendModelChange({ provider: "anthropic", modelId: "claude-opus" }, "off");
-		const { messages } = sm.buildSessionContext();
+		await sm.appendModelChange({ provider: "anthropic", modelId: "claude-opus" }, "off");
+		const { messages } = await sm.buildSessionContext();
 		expect(messages).toHaveLength(0);
 	});
 
-	test("is reflected in buildSessionContext model", () => {
+	test("is reflected in buildSessionContext model", async () => {
 		const sm = createInMemorySessionManager();
-		sm.appendModelChange({ provider: "anthropic", modelId: "claude-opus" }, "off");
-		const { model } = sm.buildSessionContext();
+		await sm.appendModelChange({ provider: "anthropic", modelId: "claude-opus" }, "off");
+		const { model } = await sm.buildSessionContext();
 		expect(model).toEqual({ provider: "anthropic", modelId: "claude-opus" });
 	});
 
-	test("is reflected in buildSessionContext thinkingLevel", () => {
+	test("is reflected in buildSessionContext thinkingLevel", async () => {
 		const sm = createInMemorySessionManager();
-		sm.appendModelChange({ provider: "anthropic", modelId: "claude-opus" }, "high");
-		const { thinkingLevel } = sm.buildSessionContext();
+		await sm.appendModelChange({ provider: "anthropic", modelId: "claude-opus" }, "high");
+		const { thinkingLevel } = await sm.buildSessionContext();
 		expect(thinkingLevel).toBe("high");
 	});
 
-	test("latest model change wins", () => {
+	test("latest model change wins", async () => {
 		const sm = createInMemorySessionManager();
-		sm.appendModelChange({ provider: "anthropic", modelId: "claude-haiku" }, "off");
-		sm.appendModelChange({ provider: "anthropic", modelId: "claude-opus" }, "low");
-		const { model, thinkingLevel } = sm.buildSessionContext();
+		await sm.appendModelChange({ provider: "anthropic", modelId: "claude-haiku" }, "off");
+		await sm.appendModelChange({ provider: "anthropic", modelId: "claude-opus" }, "low");
+		const { model, thinkingLevel } = await sm.buildSessionContext();
 		expect(model).toEqual({ provider: "anthropic", modelId: "claude-opus" });
 		expect(thinkingLevel).toBe("low");
 	});
@@ -182,31 +182,31 @@ describe("appendModelChange", () => {
 // ─── appendThinkingLevelChange ────────────────────────────────────────────────
 
 describe("appendThinkingLevelChange", () => {
-	test("returns a unique EntryId", () => {
+	test("returns a unique EntryId", async () => {
 		const sm = createInMemorySessionManager();
-		const id = sm.appendThinkingLevelChange("high");
+		const id = await sm.appendThinkingLevelChange("high");
 		expect(id).toBeTruthy();
 	});
 
-	test("does NOT appear in buildSessionContext messages", () => {
+	test("does NOT appear in buildSessionContext messages", async () => {
 		const sm = createInMemorySessionManager();
-		sm.appendThinkingLevelChange("high");
-		const { messages } = sm.buildSessionContext();
+		await sm.appendThinkingLevelChange("high");
+		const { messages } = await sm.buildSessionContext();
 		expect(messages).toHaveLength(0);
 	});
 
-	test("is reflected in buildSessionContext thinkingLevel", () => {
+	test("is reflected in buildSessionContext thinkingLevel", async () => {
 		const sm = createInMemorySessionManager();
-		sm.appendThinkingLevelChange("low");
-		const { thinkingLevel } = sm.buildSessionContext();
+		await sm.appendThinkingLevelChange("low");
+		const { thinkingLevel } = await sm.buildSessionContext();
 		expect(thinkingLevel).toBe("low");
 	});
 
-	test("latest thinkingLevelChange wins over a prior modelChange", () => {
+	test("latest thinkingLevelChange wins over a prior modelChange", async () => {
 		const sm = createInMemorySessionManager();
-		sm.appendModelChange({ provider: "anthropic", modelId: "claude-opus" }, "high");
-		sm.appendThinkingLevelChange("off");
-		const { thinkingLevel } = sm.buildSessionContext();
+		await sm.appendModelChange({ provider: "anthropic", modelId: "claude-opus" }, "high");
+		await sm.appendThinkingLevelChange("off");
+		const { thinkingLevel } = await sm.buildSessionContext();
 		expect(thinkingLevel).toBe("off");
 	});
 });
@@ -214,19 +214,19 @@ describe("appendThinkingLevelChange", () => {
 // ─── appendLabel ──────────────────────────────────────────────────────────────
 
 describe("appendLabel", () => {
-	test("returns a unique EntryId", () => {
+	test("returns a unique EntryId", async () => {
 		const sm = createInMemorySessionManager();
-		const msgId = sm.appendMessage(makeUserMessage("hi"));
-		const labelId = sm.appendLabel("important", msgId);
+		const msgId = await sm.appendMessage(makeUserMessage("hi"));
+		const labelId = await sm.appendLabel("important", msgId);
 		expect(labelId).toBeTruthy();
 		expect(labelId).not.toBe(msgId);
 	});
 
-	test("does NOT affect buildSessionContext messages", () => {
+	test("does NOT affect buildSessionContext messages", async () => {
 		const sm = createInMemorySessionManager();
-		const msgId = sm.appendMessage(makeUserMessage("hi"));
-		sm.appendLabel("important", msgId);
-		const { messages } = sm.buildSessionContext();
+		const msgId = await sm.appendMessage(makeUserMessage("hi"));
+		await sm.appendLabel("important", msgId);
+		const { messages } = await sm.buildSessionContext();
 		expect(messages).toHaveLength(1);
 	});
 });
@@ -234,23 +234,23 @@ describe("appendLabel", () => {
 // ─── compact ──────────────────────────────────────────────────────────────────
 
 describe("compact", () => {
-	test("returns a unique EntryId", () => {
+	test("returns a unique EntryId", async () => {
 		const sm = createInMemorySessionManager();
-		const msgId = sm.appendMessage(makeUserMessage("hi"));
-		const compactId = sm.compact("summary", msgId);
+		const msgId = await sm.appendMessage(makeUserMessage("hi"));
+		const compactId = await sm.compact("summary", msgId);
 		expect(compactId).toBeTruthy();
 		expect(compactId).not.toBe(msgId);
 	});
 
-	test("messages before firstKeptEntryId are replaced by CompactionSummaryMessage", () => {
+	test("messages before firstKeptEntryId are replaced by CompactionSummaryMessage", async () => {
 		const sm = createInMemorySessionManager();
-		sm.appendMessage(makeUserMessage("old 1"));
-		sm.appendMessage(makeAssistantMessage("old 2"));
-		const keepId = sm.appendMessage(makeUserMessage("keep this"));
-		sm.appendMessage(makeAssistantMessage("after keep"));
-		sm.compact("This is the summary", keepId);
+		await sm.appendMessage(makeUserMessage("old 1"));
+		await sm.appendMessage(makeAssistantMessage("old 2"));
+		const keepId = await sm.appendMessage(makeUserMessage("keep this"));
+		await sm.appendMessage(makeAssistantMessage("after keep"));
+		await sm.compact("This is the summary", keepId);
 
-		const { messages } = sm.buildSessionContext();
+		const { messages } = await sm.buildSessionContext();
 		// compactionSummary + "keep this" + "after keep"
 		expect(messages).toHaveLength(3);
 		expect(messages[0].role).toBe("compactionSummary");
@@ -260,120 +260,120 @@ describe("compact", () => {
 		expect(messages[2].role).toBe("assistant");
 	});
 
-	test("tokensBefore is stored and surfaced on CompactionSummaryMessage", () => {
+	test("tokensBefore is stored and surfaced on CompactionSummaryMessage", async () => {
 		const sm = createInMemorySessionManager();
-		const keepId = sm.appendMessage(makeUserMessage("keep"));
-		sm.compact("summary", keepId, 42000);
+		const keepId = await sm.appendMessage(makeUserMessage("keep"));
+		await sm.compact("summary", keepId, 42000);
 
-		const { messages } = sm.buildSessionContext();
+		const { messages } = await sm.buildSessionContext();
 		expect(messages[0].role).toBe("compactionSummary");
 		// @ts-expect-error — accessing compactionSummary role field
 		expect(messages[0].tokensBefore).toBe(42000);
 	});
 
-	test("tokensBefore defaults to 0 when omitted", () => {
+	test("tokensBefore defaults to 0 when omitted", async () => {
 		const sm = createInMemorySessionManager();
-		const keepId = sm.appendMessage(makeUserMessage("keep"));
-		sm.compact("summary", keepId);
+		const keepId = await sm.appendMessage(makeUserMessage("keep"));
+		await sm.compact("summary", keepId);
 
-		const { messages } = sm.buildSessionContext();
+		const { messages } = await sm.buildSessionContext();
 		// @ts-expect-error — accessing compactionSummary role field
 		expect(messages[0].tokensBefore).toBe(0);
 	});
 
-	test("messages appended after compact() are included after the summary", () => {
+	test("messages appended after compact() are included after the summary", async () => {
 		const sm = createInMemorySessionManager();
-		const keepId = sm.appendMessage(makeUserMessage("keep"));
-		sm.compact("summary", keepId);
-		sm.appendMessage(makeAssistantMessage("new message"));
+		const keepId = await sm.appendMessage(makeUserMessage("keep"));
+		await sm.compact("summary", keepId);
+		await sm.appendMessage(makeAssistantMessage("new message"));
 
-		const { messages } = sm.buildSessionContext();
+		const { messages } = await sm.buildSessionContext();
 		// compactionSummary + "keep" + "new message"
 		expect(messages).toHaveLength(3);
 		expect(messages[2].role).toBe("assistant");
 	});
 
-	test("firstKeptEntryId not found — summary only, no pre-compaction messages", () => {
+	test("firstKeptEntryId not found — summary only, no pre-compaction messages", async () => {
 		const sm = createInMemorySessionManager();
-		sm.appendMessage(makeUserMessage("old 1"));
-		sm.appendMessage(makeAssistantMessage("old 2"));
-		sm.compact("summary", "nonexistent-id");
+		await sm.appendMessage(makeUserMessage("old 1"));
+		await sm.appendMessage(makeAssistantMessage("old 2"));
+		await sm.compact("summary", "nonexistent-id");
 
-		const { messages } = sm.buildSessionContext();
+		const { messages } = await sm.buildSessionContext();
 		expect(messages).toHaveLength(1);
 		expect(messages[0].role).toBe("compactionSummary");
 		// @ts-expect-error — accessing compactionSummary role field
 		expect(messages[0].summary).toBe("summary");
 	});
 
-	test("firstKeptEntryId not found still includes messages appended after compact()", () => {
+	test("firstKeptEntryId not found still includes messages appended after compact()", async () => {
 		const sm = createInMemorySessionManager();
-		sm.appendMessage(makeUserMessage("old"));
-		sm.compact("summary", "nonexistent-id");
-		sm.appendMessage(makeAssistantMessage("new after compact"));
+		await sm.appendMessage(makeUserMessage("old"));
+		await sm.compact("summary", "nonexistent-id");
+		await sm.appendMessage(makeAssistantMessage("new after compact"));
 
-		const { messages } = sm.buildSessionContext();
+		const { messages } = await sm.buildSessionContext();
 		expect(messages).toHaveLength(2);
 		expect(messages[0].role).toBe("compactionSummary");
 		expect(messages[1].role).toBe("assistant");
 	});
 
-	test("no arguments — full compaction with no summary message", () => {
+	test("no arguments — full compaction with no summary message", async () => {
 		const sm = createInMemorySessionManager();
-		sm.appendMessage(makeUserMessage("old 1"));
-		sm.appendMessage(makeAssistantMessage("old 2"));
-		sm.compact();
+		await sm.appendMessage(makeUserMessage("old 1"));
+		await sm.appendMessage(makeAssistantMessage("old 2"));
+		await sm.compact();
 
-		const { messages } = sm.buildSessionContext();
+		const { messages } = await sm.buildSessionContext();
 		expect(messages).toHaveLength(0);
 	});
 
-	test("no arguments — messages appended after compact() are kept", () => {
+	test("no arguments — messages appended after compact() are kept", async () => {
 		const sm = createInMemorySessionManager();
-		sm.appendMessage(makeUserMessage("old"));
-		sm.compact();
-		sm.appendMessage(makeAssistantMessage("new after compact"));
+		await sm.appendMessage(makeUserMessage("old"));
+		await sm.compact();
+		await sm.appendMessage(makeAssistantMessage("new after compact"));
 
-		const { messages } = sm.buildSessionContext();
+		const { messages } = await sm.buildSessionContext();
 		expect(messages).toHaveLength(1);
 		expect(messages[0].role).toBe("assistant");
 	});
 
-	test("summary only (no firstKeptEntryId) — full compaction with summary message", () => {
+	test("summary only (no firstKeptEntryId) — full compaction with summary message", async () => {
 		const sm = createInMemorySessionManager();
-		sm.appendMessage(makeUserMessage("old 1"));
-		sm.appendMessage(makeAssistantMessage("old 2"));
-		sm.compact("my summary");
+		await sm.appendMessage(makeUserMessage("old 1"));
+		await sm.appendMessage(makeAssistantMessage("old 2"));
+		await sm.compact("my summary");
 
-		const { messages } = sm.buildSessionContext();
+		const { messages } = await sm.buildSessionContext();
 		expect(messages).toHaveLength(1);
 		expect(messages[0].role).toBe("compactionSummary");
 		// @ts-expect-error — accessing compactionSummary role field
 		expect(messages[0].summary).toBe("my summary");
 	});
 
-	test("firstKeptEntryId only (no summary) — kept messages, no summary message", () => {
+	test("firstKeptEntryId only (no summary) — kept messages, no summary message", async () => {
 		const sm = createInMemorySessionManager();
-		sm.appendMessage(makeUserMessage("old 1"));
-		const keepId = sm.appendMessage(makeUserMessage("keep this"));
-		sm.appendMessage(makeAssistantMessage("after keep"));
-		sm.compact(undefined, keepId);
+		await sm.appendMessage(makeUserMessage("old 1"));
+		const keepId = await sm.appendMessage(makeUserMessage("keep this"));
+		await sm.appendMessage(makeAssistantMessage("after keep"));
+		await sm.compact(undefined, keepId);
 
-		const { messages } = sm.buildSessionContext();
+		const { messages } = await sm.buildSessionContext();
 		// No summary message, just the kept messages
 		expect(messages).toHaveLength(2);
 		expect(messages[0].role).toBe("user");
 		expect(messages[1].role).toBe("assistant");
 	});
 
-	test("summary + firstKeptEntryId — summary message followed by kept messages", () => {
+	test("summary + firstKeptEntryId — summary message followed by kept messages", async () => {
 		const sm = createInMemorySessionManager();
-		sm.appendMessage(makeUserMessage("old 1"));
-		const keepId = sm.appendMessage(makeUserMessage("keep this"));
-		sm.appendMessage(makeAssistantMessage("after keep"));
-		sm.compact("a summary", keepId);
+		await sm.appendMessage(makeUserMessage("old 1"));
+		const keepId = await sm.appendMessage(makeUserMessage("keep this"));
+		await sm.appendMessage(makeAssistantMessage("after keep"));
+		await sm.compact("a summary", keepId);
 
-		const { messages } = sm.buildSessionContext();
+		const { messages } = await sm.buildSessionContext();
 		expect(messages).toHaveLength(3);
 		expect(messages[0].role).toBe("compactionSummary");
 		// @ts-expect-error — accessing compactionSummary role field
@@ -382,19 +382,19 @@ describe("compact", () => {
 		expect(messages[2].role).toBe("assistant");
 	});
 
-	test("latest compaction wins when compact() is called multiple times", () => {
+	test("latest compaction wins when compact() is called multiple times", async () => {
 		const sm = createInMemorySessionManager();
-		sm.appendMessage(makeUserMessage("old 1"));
-		const firstKeepId = sm.appendMessage(makeUserMessage("first keep"));
-		sm.compact("first summary", firstKeepId);
+		await sm.appendMessage(makeUserMessage("old 1"));
+		const firstKeepId = await sm.appendMessage(makeUserMessage("first keep"));
+		await sm.compact("first summary", firstKeepId);
 
-		sm.appendMessage(makeAssistantMessage("middle"));
-		const secondKeepId = sm.appendMessage(makeUserMessage("second keep"));
-		sm.compact("second summary", secondKeepId);
+		await sm.appendMessage(makeAssistantMessage("middle"));
+		const secondKeepId = await sm.appendMessage(makeUserMessage("second keep"));
+		await sm.compact("second summary", secondKeepId);
 
-		sm.appendMessage(makeAssistantMessage("latest"));
+		await sm.appendMessage(makeAssistantMessage("latest"));
 
-		const { messages } = sm.buildSessionContext();
+		const { messages } = await sm.buildSessionContext();
 		// Only the second compaction applies.
 		expect(messages[0].role).toBe("compactionSummary");
 		// @ts-expect-error — accessing compactionSummary role field
@@ -403,12 +403,12 @@ describe("compact", () => {
 		expect(messages).toHaveLength(3);
 	});
 
-	test("compactionSummaryMessage content wraps summary in expected tags when converted to LLM", () => {
+	test("compactionSummaryMessage content wraps summary in expected tags when converted to LLM", async () => {
 		const sm = createInMemorySessionManager();
-		const keepId = sm.appendMessage(makeUserMessage("keep"));
-		sm.compact("my summary text", keepId);
+		const keepId = await sm.appendMessage(makeUserMessage("keep"));
+		await sm.compact("my summary text", keepId);
 
-		const { messages } = sm.buildSessionContext();
+		const { messages } = await sm.buildSessionContext();
 		expect(messages[0].role).toBe("compactionSummary");
 		// @ts-expect-error — accessing compactionSummary role field
 		const summary: string = messages[0].summary;
@@ -420,16 +420,16 @@ describe("compact", () => {
 // ─── unique IDs across all entry types ───────────────────────────────────────
 
 describe("EntryId uniqueness", () => {
-	test("all append methods return unique IDs across the same instance", () => {
+	test("all append methods return unique IDs across the same instance", async () => {
 		const sm = createInMemorySessionManager();
-		const ids = [
+		const ids = await Promise.all([
 			sm.appendMessage(makeUserMessage("m")),
 			sm.appendCustomMessageEntry("ext", "c", true),
 			sm.appendCustomEntry("ext", {}),
 			sm.appendModelChange({ provider: "p", modelId: "m" }, "off"),
 			sm.appendThinkingLevelChange("low"),
 			sm.appendLabel("lbl", "1"),
-		];
+		]);
 		const unique = new Set(ids);
 		expect(unique.size).toBe(ids.length);
 	});
@@ -438,22 +438,22 @@ describe("EntryId uniqueness", () => {
 // ─── getEntries ──────────────────────────────────────────────────────────────
 
 describe("getEntries", () => {
-	test("returns an empty array for a new session", () => {
+	test("returns an empty array for a new session", async () => {
 		const sm = createInMemorySessionManager();
-		expect(sm.getEntries()).toEqual([]);
+		expect(await sm.getEntries()).toEqual([]);
 	});
 
-	test("returns all entries in append order", () => {
+	test("returns all entries in append order", async () => {
 		const sm = createInMemorySessionManager();
-		const msgId = sm.appendMessage(makeUserMessage("hello"));
-		sm.appendCustomEntry("ext-1", { state: true });
-		sm.appendModelChange({ provider: "anthropic", modelId: "claude-opus" }, "high");
-		sm.appendThinkingLevelChange("off");
-		sm.compact("summary", msgId, 100);
-		sm.appendLabel("important", msgId);
-		sm.appendCustomMessageEntry("ext-2", "visible", true);
+		const msgId = await sm.appendMessage(makeUserMessage("hello"));
+		await sm.appendCustomEntry("ext-1", { state: true });
+		await sm.appendModelChange({ provider: "anthropic", modelId: "claude-opus" }, "high");
+		await sm.appendThinkingLevelChange("off");
+		await sm.compact("summary", msgId, 100);
+		await sm.appendLabel("important", msgId);
+		await sm.appendCustomMessageEntry("ext-2", "visible", true);
 
-		const entries = sm.getEntries();
+		const entries = await sm.getEntries();
 		expect(entries).toHaveLength(7);
 		expect(entries[0].type).toBe("message");
 		expect(entries[1].type).toBe("customEntry");
@@ -464,20 +464,20 @@ describe("getEntries", () => {
 		expect(entries[6].type).toBe("customMessage");
 	});
 
-	test("returns a shallow copy — mutating the returned array does not affect internal state", () => {
+	test("returns a shallow copy — mutating the returned array does not affect internal state", async () => {
 		const sm = createInMemorySessionManager();
-		sm.appendMessage(makeUserMessage("keep"));
-		const entries = sm.getEntries();
+		await sm.appendMessage(makeUserMessage("keep"));
+		const entries = await sm.getEntries();
 		entries.push({ type: "label", id: "fake", label: "injected", targetEntryId: "x" });
-		expect(sm.getEntries()).toHaveLength(1);
+		expect(await sm.getEntries()).toHaveLength(1);
 	});
 
-	test("customEntry entries are included (unlike buildSessionContext messages)", () => {
+	test("customEntry entries are included (unlike buildSessionContext messages)", async () => {
 		const sm = createInMemorySessionManager();
-		sm.appendMessage(makeUserMessage("visible"));
-		sm.appendCustomEntry("my-ext", { key: "value" });
+		await sm.appendMessage(makeUserMessage("visible"));
+		await sm.appendCustomEntry("my-ext", { key: "value" });
 
-		const entries = sm.getEntries();
+		const entries = await sm.getEntries();
 		expect(entries).toHaveLength(2);
 		expect(entries[1].type).toBe("customEntry");
 		if (entries[1].type === "customEntry") {
@@ -486,13 +486,13 @@ describe("getEntries", () => {
 		}
 	});
 
-	test("entries remain accessible after compaction", () => {
+	test("entries remain accessible after compaction", async () => {
 		const sm = createInMemorySessionManager();
-		sm.appendMessage(makeUserMessage("old"));
-		const keepId = sm.appendMessage(makeUserMessage("keep"));
-		sm.compact("summary", keepId);
+		await sm.appendMessage(makeUserMessage("old"));
+		const keepId = await sm.appendMessage(makeUserMessage("keep"));
+		await sm.compact("summary", keepId);
 
-		const entries = sm.getEntries();
+		const entries = await sm.getEntries();
 		// All 3 entries still present: 2 messages + 1 compaction
 		expect(entries).toHaveLength(3);
 		expect(entries[0].type).toBe("message");
@@ -500,12 +500,12 @@ describe("getEntries", () => {
 		expect(entries[2].type).toBe("compaction");
 	});
 
-	test("available via ReadonlySessionManager", () => {
+	test("available via ReadonlySessionManager", async () => {
 		const sm = createInMemorySessionManager();
-		sm.appendCustomEntry("ext", { persisted: true });
+		await sm.appendCustomEntry("ext", { persisted: true });
 
 		const readonly: ReadonlySessionManager = sm;
-		const entries = readonly.getEntries();
+		const entries = await readonly.getEntries();
 		expect(entries).toHaveLength(1);
 		expect(entries[0].type).toBe("customEntry");
 	});
@@ -514,21 +514,21 @@ describe("getEntries", () => {
 // ─── SessionManager.inMemory() factory ───────────────────────────────────────
 
 describe("SessionManager.inMemory()", () => {
-	test("returns a working SessionManager instance", () => {
+	test("returns a working SessionManager instance", async () => {
 		const sm = SessionManager.inMemory();
 		expect(sm).toBeDefined();
-		const ctx = sm.buildSessionContext();
+		const ctx = await sm.buildSessionContext();
 		expect(ctx.messages).toEqual([]);
 		expect(ctx.thinkingLevel).toBe("off");
 		expect(ctx.model).toBeNull();
 	});
 
-	test("each call returns an independent instance", () => {
+	test("each call returns an independent instance", async () => {
 		const sm1 = SessionManager.inMemory();
 		const sm2 = SessionManager.inMemory();
-		sm1.appendMessage(makeUserMessage("only in sm1"));
-		expect(sm1.buildSessionContext().messages).toHaveLength(1);
-		expect(sm2.buildSessionContext().messages).toHaveLength(0);
+		await sm1.appendMessage(makeUserMessage("only in sm1"));
+		expect((await sm1.buildSessionContext()).messages).toHaveLength(1);
+		expect((await sm2.buildSessionContext()).messages).toHaveLength(0);
 	});
 
 	test("satisfies the SessionManager type (type-level check via createInMemorySessionManager)", () => {
@@ -543,9 +543,9 @@ describe("SessionManager.inMemory()", () => {
 // ─── InMemorySessionManager — direct construction & instanceof ──────────────
 
 describe("InMemorySessionManager — direct construction", () => {
-	test("can be constructed directly via new", () => {
+	test("can be constructed directly via new", async () => {
 		const sm = new InMemorySessionManager();
-		const ctx = sm.buildSessionContext();
+		const ctx = await sm.buildSessionContext();
 		expect(ctx.messages).toEqual([]);
 		expect(ctx.thinkingLevel).toBe("off");
 		expect(ctx.model).toBeNull();

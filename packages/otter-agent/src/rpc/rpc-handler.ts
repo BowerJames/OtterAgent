@@ -192,7 +192,7 @@ export class RpcHandler {
 					);
 					break;
 				}
-				this._session.setThinkingLevel(command.level);
+				await this._session.setThinkingLevel(command.level);
 				this._send(this._success(command.id, "set_thinking_level"));
 				break;
 			}

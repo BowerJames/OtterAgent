@@ -74,7 +74,7 @@ export interface SessionManager {
 	 * @param message - The agent message to persist.
 	 * @returns The unique ID of the created entry.
 	 */
-	appendMessage(message: AgentMessage): EntryId;
+	appendMessage(message: AgentMessage): Promise<EntryId>;
 
 	/**
 	 * Build the session context for the LLM.
@@ -91,7 +91,7 @@ export interface SessionManager {
 	 *
 	 * @returns The session context including messages, thinking level, and model.
 	 */
-	buildSessionContext(): SessionContext;
+	buildSessionContext(): Promise<SessionContext>;
 
 	/**
 	 * Record a compaction event. When `buildSessionContext()` is called,
@@ -117,7 +117,7 @@ export interface SessionManager {
 		firstKeptEntryId?: EntryId,
 		tokensBefore?: number,
 		details?: unknown,
-	): EntryId;
+	): Promise<EntryId>;
 
 	/**
 	 * Persist extension state that is NOT included in LLM context.
@@ -130,7 +130,7 @@ export interface SessionManager {
 	 * @param data - Optional extension-specific data to persist.
 	 * @returns The unique ID of the created entry.
 	 */
-	appendCustomEntry(customType: string, data?: unknown): EntryId;
+	appendCustomEntry(customType: string, data?: unknown): Promise<EntryId>;
 
 	/**
 	 * Persist an extension message that IS included in LLM context.
@@ -151,7 +151,7 @@ export interface SessionManager {
 		content: string | (TextContent | ImageContent)[],
 		display: boolean,
 		details?: unknown,
-	): EntryId;
+	): Promise<EntryId>;
 
 	/**
 	 * Record a model and thinking level change.
@@ -163,7 +163,10 @@ export interface SessionManager {
 	 * @param thinkingLevel - The thinking level at the time of the change.
 	 * @returns The unique ID of the created entry.
 	 */
-	appendModelChange(model: { provider: string; modelId: string }, thinkingLevel: string): EntryId;
+	appendModelChange(
+		model: { provider: string; modelId: string },
+		thinkingLevel: string,
+	): Promise<EntryId>;
 
 	/**
 	 * Record a thinking level change.
@@ -174,7 +177,7 @@ export interface SessionManager {
 	 * @param thinkingLevel - The new thinking level.
 	 * @returns The unique ID of the created entry.
 	 */
-	appendThinkingLevelChange(thinkingLevel: string): EntryId;
+	appendThinkingLevelChange(thinkingLevel: string): Promise<EntryId>;
 
 	/**
 	 * Attach a label/bookmark to a specific entry.
@@ -186,7 +189,7 @@ export interface SessionManager {
 	 * @param targetEntryId - The ID of the entry to label.
 	 * @returns The unique ID of the label entry.
 	 */
-	appendLabel(label: string, targetEntryId: EntryId): EntryId;
+	appendLabel(label: string, targetEntryId: EntryId): Promise<EntryId>;
 
 	/**
 	 * Return all entries for this session in append order.
@@ -201,7 +204,7 @@ export interface SessionManager {
 	 * @returns A read-only snapshot of all entries. Callers must not mutate
 	 *   the returned array or its elements.
 	 */
-	getEntries(): Entry[];
+	getEntries(): Promise<Entry[]>;
 }
 
 /**
