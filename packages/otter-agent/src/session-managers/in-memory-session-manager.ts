@@ -18,18 +18,18 @@ export class InMemorySessionManager implements SessionManager {
 		return String(this.nextId++);
 	}
 
-	appendMessage(message: AgentMessage): EntryId {
+	async appendMessage(message: AgentMessage): Promise<EntryId> {
 		const id = this.generateId();
 		this.entries.push({ type: "message", id, message });
 		return id;
 	}
 
-	appendCustomMessageEntry(
+	async appendCustomMessageEntry(
 		customType: string,
 		content: string | (TextContent | ImageContent)[],
 		display: boolean,
 		details?: unknown,
-	): EntryId {
+	): Promise<EntryId> {
 		const id = this.generateId();
 		this.entries.push({
 			type: "customMessage",
@@ -43,46 +43,49 @@ export class InMemorySessionManager implements SessionManager {
 		return id;
 	}
 
-	appendCustomEntry(customType: string, data?: unknown): EntryId {
+	async appendCustomEntry(customType: string, data?: unknown): Promise<EntryId> {
 		const id = this.generateId();
 		this.entries.push({ type: "customEntry", id, customType, data });
 		return id;
 	}
 
-	appendModelChange(model: { provider: string; modelId: string }, thinkingLevel: string): EntryId {
+	async appendModelChange(
+		model: { provider: string; modelId: string },
+		thinkingLevel: string,
+	): Promise<EntryId> {
 		const id = this.generateId();
 		this.entries.push({ type: "modelChange", id, model, thinkingLevel });
 		return id;
 	}
 
-	appendThinkingLevelChange(thinkingLevel: string): EntryId {
+	async appendThinkingLevelChange(thinkingLevel: string): Promise<EntryId> {
 		const id = this.generateId();
 		this.entries.push({ type: "thinkingLevelChange", id, thinkingLevel });
 		return id;
 	}
 
-	compact(
+	async compact(
 		summary?: string,
 		firstKeptEntryId?: EntryId,
 		tokensBefore = 0,
 		details?: unknown,
-	): EntryId {
+	): Promise<EntryId> {
 		const id = this.generateId();
 		this.entries.push({ type: "compaction", id, summary, firstKeptEntryId, tokensBefore, details });
 		return id;
 	}
 
-	appendLabel(label: string, targetEntryId: EntryId): EntryId {
+	async appendLabel(label: string, targetEntryId: EntryId): Promise<EntryId> {
 		const id = this.generateId();
 		this.entries.push({ type: "label", id, label, targetEntryId });
 		return id;
 	}
 
-	getEntries(): Entry[] {
+	async getEntries(): Promise<Entry[]> {
 		return [...this.entries];
 	}
 
-	buildSessionContext(): SessionContext {
+	async buildSessionContext(): Promise<SessionContext> {
 		// Find the latest compaction entry.
 		let latestCompaction: Extract<Entry, { type: "compaction" }> | undefined;
 		for (const entry of this.entries) {

@@ -19,14 +19,15 @@ import type {
 function createMockSessionManager(): SessionManager {
 	let entryCounter = 0;
 	return {
-		appendMessage: vi.fn(() => String(++entryCounter)),
-		buildSessionContext: vi.fn(() => ({ messages: [], thinkingLevel: "off", model: null })),
-		compact: vi.fn(() => String(++entryCounter)),
-		appendCustomEntry: vi.fn(() => String(++entryCounter)),
-		appendCustomMessageEntry: vi.fn(() => String(++entryCounter)),
-		appendModelChange: vi.fn(() => String(++entryCounter)),
-		appendThinkingLevelChange: vi.fn(() => String(++entryCounter)),
-		appendLabel: vi.fn(() => String(++entryCounter)),
+		appendMessage: vi.fn(async () => String(++entryCounter)),
+		buildSessionContext: vi.fn(async () => ({ messages: [], thinkingLevel: "off", model: null })),
+		compact: vi.fn(async () => String(++entryCounter)),
+		appendCustomEntry: vi.fn(async () => String(++entryCounter)),
+		appendCustomMessageEntry: vi.fn(async () => String(++entryCounter)),
+		appendModelChange: vi.fn(async () => String(++entryCounter)),
+		appendThinkingLevelChange: vi.fn(async () => String(++entryCounter)),
+		appendLabel: vi.fn(async () => String(++entryCounter)),
+		getEntries: vi.fn(async () => []),
 	};
 }
 
