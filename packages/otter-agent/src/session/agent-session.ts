@@ -546,7 +546,13 @@ export class AgentSession {
 	private _handleAgentEvent = async (event: AgentEvent): Promise<void> => {
 		// Persist messages to session manager
 		if (event.type === "message_end") {
-			await this.sessionManager.appendMessage(event.message);
+			try {
+				await this.sessionManager.appendMessage(event.message);
+			} catch (err) {
+				console.warn(
+					`[AgentSession] Failed to persist message: ${err instanceof Error ? err.message : String(err)}`,
+				);
+			}
 		}
 
 		// Forward agent events to extension handlers

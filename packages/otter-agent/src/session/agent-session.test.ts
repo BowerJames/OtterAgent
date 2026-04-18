@@ -16,14 +16,15 @@ import { ModelRegistry } from "./model-registry.js";
 function createMockSessionManager(): SessionManager {
 	let entryCounter = 0;
 	return {
-		appendMessage: vi.fn(() => String(++entryCounter)),
-		buildSessionContext: vi.fn(() => ({ messages: [], thinkingLevel: "off", model: null })),
-		compact: vi.fn(() => String(++entryCounter)),
-		appendCustomEntry: vi.fn(() => String(++entryCounter)),
-		appendCustomMessageEntry: vi.fn(() => String(++entryCounter)),
-		appendModelChange: vi.fn(() => String(++entryCounter)),
-		appendThinkingLevelChange: vi.fn(() => String(++entryCounter)),
-		appendLabel: vi.fn(() => String(++entryCounter)),
+		appendMessage: vi.fn(async () => String(++entryCounter)),
+		buildSessionContext: vi.fn(async () => ({ messages: [], thinkingLevel: "off", model: null })),
+		compact: vi.fn(async () => String(++entryCounter)),
+		appendCustomEntry: vi.fn(async () => String(++entryCounter)),
+		appendCustomMessageEntry: vi.fn(async () => String(++entryCounter)),
+		appendModelChange: vi.fn(async () => String(++entryCounter)),
+		appendThinkingLevelChange: vi.fn(async () => String(++entryCounter)),
+		appendLabel: vi.fn(async () => String(++entryCounter)),
+		getEntries: vi.fn(async () => []),
 	};
 }
 
@@ -533,16 +534,17 @@ describe("AgentSession", () => {
 		const mockFn = vi.fn;
 		const onError = mockFn(() => {});
 		const sm: SessionManager = {
-			appendMessage: mockFn(() => "1"),
-			buildSessionContext: mockFn(() => {
+			appendMessage: mockFn(async () => "1"),
+			buildSessionContext: mockFn(async () => {
 				throw new Error("session corrupted");
 			}),
-			compact: mockFn(() => "1"),
-			appendCustomEntry: mockFn(() => "1"),
-			appendCustomMessageEntry: mockFn(() => "1"),
-			appendModelChange: mockFn(() => "1"),
-			appendThinkingLevelChange: mockFn(() => "1"),
-			appendLabel: mockFn(() => "1"),
+			compact: mockFn(async () => "1"),
+			appendCustomEntry: mockFn(async () => "1"),
+			appendCustomMessageEntry: mockFn(async () => "1"),
+			appendModelChange: mockFn(async () => "1"),
+			appendThinkingLevelChange: mockFn(async () => "1"),
+			appendLabel: mockFn(async () => "1"),
+			getEntries: mockFn(async () => []),
 		};
 		const session = new AgentSession({
 			sessionManager: sm,
@@ -941,14 +943,15 @@ function createContextSessionManager(ctx: {
 }): SessionManager {
 	let entryCounter = 0;
 	return {
-		appendMessage: vi.fn(() => String(++entryCounter)),
-		buildSessionContext: vi.fn(() => ({ messages: [], ...ctx })),
-		compact: vi.fn(() => String(++entryCounter)),
-		appendCustomEntry: vi.fn(() => String(++entryCounter)),
-		appendCustomMessageEntry: vi.fn(() => String(++entryCounter)),
-		appendModelChange: vi.fn(() => String(++entryCounter)),
-		appendThinkingLevelChange: vi.fn(() => String(++entryCounter)),
-		appendLabel: vi.fn(() => String(++entryCounter)),
+		appendMessage: vi.fn(async () => String(++entryCounter)),
+		buildSessionContext: vi.fn(async () => ({ messages: [], ...ctx })),
+		compact: vi.fn(async () => String(++entryCounter)),
+		appendCustomEntry: vi.fn(async () => String(++entryCounter)),
+		appendCustomMessageEntry: vi.fn(async () => String(++entryCounter)),
+		appendModelChange: vi.fn(async () => String(++entryCounter)),
+		appendThinkingLevelChange: vi.fn(async () => String(++entryCounter)),
+		appendLabel: vi.fn(async () => String(++entryCounter)),
+		getEntries: vi.fn(async () => []),
 	};
 }
 
@@ -1242,18 +1245,19 @@ describe("createAgentSession", () => {
 
 		let entryCounter = 0;
 		const sm: SessionManager = {
-			appendMessage: vi.fn(() => String(++entryCounter)),
-			buildSessionContext: vi.fn(() => ({
+			appendMessage: vi.fn(async () => String(++entryCounter)),
+			buildSessionContext: vi.fn(async () => ({
 				messages,
 				thinkingLevel: "off" as ThinkingLevel,
 				model: null,
 			})),
-			compact: vi.fn(() => String(++entryCounter)),
-			appendCustomEntry: vi.fn(() => String(++entryCounter)),
-			appendCustomMessageEntry: vi.fn(() => String(++entryCounter)),
-			appendModelChange: vi.fn(() => String(++entryCounter)),
-			appendThinkingLevelChange: vi.fn(() => String(++entryCounter)),
-			appendLabel: vi.fn(() => String(++entryCounter)),
+			compact: vi.fn(async () => String(++entryCounter)),
+			appendCustomEntry: vi.fn(async () => String(++entryCounter)),
+			appendCustomMessageEntry: vi.fn(async () => String(++entryCounter)),
+			appendModelChange: vi.fn(async () => String(++entryCounter)),
+			appendThinkingLevelChange: vi.fn(async () => String(++entryCounter)),
+			appendLabel: vi.fn(async () => String(++entryCounter)),
+			getEntries: vi.fn(async () => []),
 		};
 
 		const { session } = await createAgentSession({
