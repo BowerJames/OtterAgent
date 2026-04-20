@@ -40,7 +40,10 @@ export interface CreateAgentSessionResult {
  * but without `messages` — the factory always derives messages from
  * {@link SessionManager.buildSessionContext}.
  */
-export type CreateAgentSessionOptions = Omit<AgentSessionOptions, "messages">;
+export type CreateAgentSessionOptions = Omit<
+	AgentSessionOptions,
+	"messages" | "environmentTools" | "environmentAppend"
+>;
 
 /**
  * Async factory that creates an AgentSession with session restore.
@@ -175,21 +178,22 @@ export interface AgentSessionOptions {
 	/**
 	 * Pre-resolved tools from the environment.
 	 *
-	 * When provided (e.g. by {@link createAgentSession}), these are used
-	 * directly. Otherwise the constructor calls {@link AgentEnvironment.getTools}
-	 * synchronously — callers using an async environment must pre-resolve.
+	 * Must be provided by all callers. Use {@link createAgentSession} for
+	 * automatic pre-resolution from an {@link AgentEnvironment} (including
+	 * async environments). Direct construction requires callers to resolve
+	 * these values themselves.
 	 */
-	environmentTools?: ToolDefinition[];
+	environmentTools: ToolDefinition[];
 
 	/**
 	 * Pre-resolved system message append from the environment.
 	 *
-	 * When provided (e.g. by {@link createAgentSession}), this is used
-	 * directly. Otherwise the constructor calls
-	 * {@link AgentEnvironment.getSystemMessageAppend} synchronously —
-	 * callers using an async environment must pre-resolve.
+	 * Must be provided by all callers. Use {@link createAgentSession} for
+	 * automatic pre-resolution from an {@link AgentEnvironment} (including
+	 * async environments). Direct construction requires callers to resolve
+	 * these values themselves.
 	 */
-	environmentAppend?: string | undefined;
+	environmentAppend: string | undefined;
 }
 
 /** Event types emitted by AgentSession (superset of pi-agent-core AgentEvent). */
@@ -250,16 +254,9 @@ export class AgentSession {
 		this._extensionRunner.setUIProvider(this.uiProvider);
 		this._extensionRunner.setModelRegistry(this.modelRegistry);
 
-		// Resolve environment at startup (called once).
-		// Use pre-resolved values when available (for async environments);
-		// otherwise call directly. The direct-construction path requires
-		// a sync-compatible environment — use createAgentSession() for
-		// async environments.
-		this._environmentAppend =
-			options.environmentAppend ??
-			(this._environment.getSystemMessageAppend() as string | undefined);
-		const environmentTools =
-			options.environmentTools ?? (this._environment.getTools() as ToolDefinition[]);
+		// Use pre-resolved environment values.
+		this._environmentAppend = options.environmentAppend;
+		const environmentTools = options.environmentTools;
 
 		// Register environment tools
 		for (const tool of environmentTools) {

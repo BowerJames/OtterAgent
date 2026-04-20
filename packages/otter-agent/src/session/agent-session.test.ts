@@ -44,6 +44,35 @@ function createMockEnvironment(options?: {
 	};
 }
 
+function createSessionOptions(overrides?: {
+	environment?: AgentEnvironment;
+	systemPrompt?: string;
+	sessionManager?: SessionManager;
+	authStorage?: AuthStorage;
+	model?: Model<Api>;
+	thinkingLevel?: ThinkingLevel;
+	uiProvider?: import("../interfaces/ui-provider.js").UIProvider;
+	extensions?: Extension[];
+	messages?: AgentMessage[];
+	agentOptions?: Partial<import("@mariozechner/pi-agent-core").AgentOptions>;
+}) {
+	const environment = overrides?.environment ?? createMockEnvironment();
+	return {
+		sessionManager: overrides?.sessionManager ?? createMockSessionManager(),
+		authStorage: overrides?.authStorage ?? createMockAuthStorage(),
+		environment,
+		systemPrompt: overrides?.systemPrompt ?? "You are a helpful assistant.",
+		environmentTools: environment.getTools(),
+		environmentAppend: environment.getSystemMessageAppend(),
+		...(overrides?.model !== undefined ? { model: overrides.model } : {}),
+		...(overrides?.thinkingLevel !== undefined ? { thinkingLevel: overrides.thinkingLevel } : {}),
+		...(overrides?.uiProvider !== undefined ? { uiProvider: overrides.uiProvider } : {}),
+		...(overrides?.extensions !== undefined ? { extensions: overrides.extensions } : {}),
+		...(overrides?.messages !== undefined ? { messages: overrides.messages } : {}),
+		...(overrides?.agentOptions !== undefined ? { agentOptions: overrides.agentOptions } : {}),
+	};
+}
+
 function createTestTool(name: string): ToolDefinition {
 	return {
 		name,
@@ -65,12 +94,7 @@ function createTestTool(name: string): ToolDefinition {
 
 describe("AgentSession", () => {
 	test("constructs with minimal options", async () => {
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "You are a helpful assistant.",
-		});
+		const session = new AgentSession(createSessionOptions());
 
 		expect(session.agent).toBeDefined();
 		expect(session.sessionManager).toBeDefined();
@@ -80,14 +104,14 @@ describe("AgentSession", () => {
 	});
 
 	test("appends environment system message", async () => {
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment({
-				systemAppend: "You are in a Docker container.",
+		const session = new AgentSession(
+			createSessionOptions({
+				environment: createMockEnvironment({
+					systemAppend: "You are in a Docker container.",
+				}),
+				systemPrompt: "Base prompt.",
 			}),
-			systemPrompt: "Base prompt.",
-		});
+		);
 
 		expect(session.agent.state.systemPrompt).toContain("Base prompt.");
 		expect(session.agent.state.systemPrompt).toContain("You are in a Docker container.");
@@ -97,12 +121,9 @@ describe("AgentSession", () => {
 
 	test("registers environment tools", async () => {
 		const tool = createTestTool("env_tool");
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment({ tools: [tool] }),
-			systemPrompt: "Prompt.",
-		});
+		const session = new AgentSession(
+			createSessionOptions({ environment: createMockEnvironment({ tools: [tool] }) }),
+		);
 
 		expect(session.getActiveToolNames()).toContain("env_tool");
 		expect(session.agent.state.tools).toHaveLength(1);
@@ -113,12 +134,12 @@ describe("AgentSession", () => {
 
 	test("includes tool snippets and guidelines in system prompt", async () => {
 		const tool = createTestTool("my_tool");
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment({ tools: [tool] }),
-			systemPrompt: "Base.",
-		});
+		const session = new AgentSession(
+			createSessionOptions({
+				environment: createMockEnvironment({ tools: [tool] }),
+				systemPrompt: "Base.",
+			}),
+		);
 
 		const prompt = session.agent.state.systemPrompt;
 		expect(prompt).toContain("# Available Tools");
@@ -130,12 +151,7 @@ describe("AgentSession", () => {
 	});
 
 	test("registerTool adds a tool and updates the agent", async () => {
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-		});
+		const session = new AgentSession(createSessionOptions());
 
 		expect(session.agent.state.tools).toHaveLength(0);
 
@@ -152,12 +168,9 @@ describe("AgentSession", () => {
 	test("setActiveToolsByName filters to valid tools", async () => {
 		const tool1 = createTestTool("tool_a");
 		const tool2 = createTestTool("tool_b");
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment({ tools: [tool1, tool2] }),
-			systemPrompt: "Prompt.",
-		});
+		const session = new AgentSession(
+			createSessionOptions({ environment: createMockEnvironment({ tools: [tool1, tool2] }) }),
+		);
 
 		expect(session.getActiveToolNames()).toHaveLength(2);
 
@@ -171,12 +184,7 @@ describe("AgentSession", () => {
 
 	test("setModel persists to session manager", async () => {
 		const sm = createMockSessionManager();
-		const session = new AgentSession({
-			sessionManager: sm,
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-		});
+		const session = new AgentSession(createSessionOptions({ sessionManager: sm }));
 
 		const testModel = { id: "test-model", provider: "test" } as Parameters<
 			typeof session.setModel
@@ -193,12 +201,9 @@ describe("AgentSession", () => {
 	});
 
 	test("setModel returns false when no auth available", async () => {
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: { getApiKey: async () => undefined },
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-		});
+		const session = new AgentSession(
+			createSessionOptions({ authStorage: { getApiKey: async () => undefined } }),
+		);
 
 		const testModel = { id: "test-model", provider: "no-auth-provider" } as Parameters<
 			typeof session.setModel
@@ -212,12 +217,7 @@ describe("AgentSession", () => {
 
 	test("setThinkingLevel persists to session manager", async () => {
 		const sm = createMockSessionManager();
-		const session = new AgentSession({
-			sessionManager: sm,
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-		});
+		const session = new AgentSession(createSessionOptions({ sessionManager: sm }));
 
 		session.setThinkingLevel("high");
 
@@ -227,12 +227,7 @@ describe("AgentSession", () => {
 	});
 
 	test("subscribe and dispose work correctly", async () => {
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-		});
+		const session = new AgentSession(createSessionOptions());
 
 		const events: string[] = [];
 		const unsub = session.subscribe((e) => events.push(e.type));
@@ -254,12 +249,7 @@ describe("AgentSession", () => {
 
 	test("compact calls sessionManager.compact with no arguments by default", async () => {
 		const sm = createMockSessionManager();
-		const session = new AgentSession({
-			sessionManager: sm,
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-		});
+		const session = new AgentSession(createSessionOptions({ sessionManager: sm }));
 
 		await session.compact();
 
@@ -270,12 +260,7 @@ describe("AgentSession", () => {
 
 	test("compact passes customInstructions to session_before_compact", async () => {
 		const sm = createMockSessionManager();
-		const session = new AgentSession({
-			sessionManager: sm,
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-		});
+		const session = new AgentSession(createSessionOptions({ sessionManager: sm }));
 
 		let receivedInstructions: string | undefined;
 		const ext: Extension = (api) =>
@@ -293,12 +278,7 @@ describe("AgentSession", () => {
 
 	test("compact can be cancelled by extension via session_before_compact", async () => {
 		const sm = createMockSessionManager();
-		const session = new AgentSession({
-			sessionManager: sm,
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-		});
+		const session = new AgentSession(createSessionOptions({ sessionManager: sm }));
 
 		const ext: Extension = (api) =>
 			api.on("session_before_compact", () => {
@@ -316,12 +296,7 @@ describe("AgentSession", () => {
 
 	test("compact uses extension-provided custom compaction", async () => {
 		const sm = createMockSessionManager();
-		const session = new AgentSession({
-			sessionManager: sm,
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-		});
+		const session = new AgentSession(createSessionOptions({ sessionManager: sm }));
 
 		const ext: Extension = (api) =>
 			api.on("session_before_compact", () => {
@@ -347,12 +322,7 @@ describe("AgentSession", () => {
 			"../session-managers/in-memory-session-manager.js"
 		);
 		const sm = new InMemorySessionManager();
-		const session = new AgentSession({
-			sessionManager: sm,
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-		});
+		const session = new AgentSession(createSessionOptions({ sessionManager: sm }));
 
 		// Seed some messages
 		session.agent.appendMessage({
@@ -377,12 +347,7 @@ describe("AgentSession", () => {
 
 	test("compact returns undefined for default compaction", async () => {
 		const sm = createMockSessionManager();
-		const session = new AgentSession({
-			sessionManager: sm,
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-		});
+		const session = new AgentSession(createSessionOptions({ sessionManager: sm }));
 
 		const result = await session.compact();
 		expect(result).toBeUndefined();
@@ -392,12 +357,7 @@ describe("AgentSession", () => {
 
 	test("compact returns the summary from extension-provided compaction", async () => {
 		const sm = createMockSessionManager();
-		const session = new AgentSession({
-			sessionManager: sm,
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-		});
+		const session = new AgentSession(createSessionOptions({ sessionManager: sm }));
 
 		const ext: Extension = (api) =>
 			api.on("session_before_compact", () => {
@@ -418,12 +378,7 @@ describe("AgentSession", () => {
 
 	test("compact returns undefined when cancelled by extension", async () => {
 		const sm = createMockSessionManager();
-		const session = new AgentSession({
-			sessionManager: sm,
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-		});
+		const session = new AgentSession(createSessionOptions({ sessionManager: sm }));
 
 		const ext: Extension = (api) =>
 			api.on("session_before_compact", () => {
@@ -439,12 +394,7 @@ describe("AgentSession", () => {
 
 	test("compact fires session_compact event with extension-provided summary", async () => {
 		const sm = createMockSessionManager();
-		const session = new AgentSession({
-			sessionManager: sm,
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-		});
+		const session = new AgentSession(createSessionOptions({ sessionManager: sm }));
 
 		let capturedSummary = "";
 		let capturedFromExtension = false;
@@ -479,12 +429,7 @@ describe("AgentSession", () => {
 
 	test("onComplete callback receives summary via ExtensionContext.compact", async () => {
 		const sm = createMockSessionManager();
-		const session = new AgentSession({
-			sessionManager: sm,
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-		});
+		const session = new AgentSession(createSessionOptions({ sessionManager: sm }));
 
 		const onComplete = vi.fn(() => {});
 		const ext: Extension = (api) =>
@@ -504,12 +449,7 @@ describe("AgentSession", () => {
 
 	test("onComplete callback receives extension-provided summary via ExtensionContext.compact", async () => {
 		const sm = createMockSessionManager();
-		const session = new AgentSession({
-			sessionManager: sm,
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-		});
+		const session = new AgentSession(createSessionOptions({ sessionManager: sm }));
 
 		const onComplete = vi.fn(() => {});
 		const ext: Extension = (api) => {
@@ -546,12 +486,7 @@ describe("AgentSession", () => {
 			appendLabel: mockFn(async () => "1"),
 			getEntries: mockFn(async () => []),
 		};
-		const session = new AgentSession({
-			sessionManager: sm,
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-		});
+		const session = new AgentSession(createSessionOptions({ sessionManager: sm }));
 
 		const ext: Extension = (api) =>
 			api.on("session_start", (_event, ctx) => {
@@ -574,13 +509,7 @@ describe("AgentSession", () => {
 			{ role: "assistant", content: [{ type: "text", text: "Hi there" }], timestamp: 2 },
 		];
 
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-			messages,
-		});
+		const session = new AgentSession(createSessionOptions({ messages }));
 
 		expect(session.agent.state.messages).toHaveLength(2);
 		expect(session.agent.state.messages[0].role).toBe("user");
@@ -590,12 +519,7 @@ describe("AgentSession", () => {
 	});
 
 	test("omitting messages option starts with empty history", async () => {
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-		});
+		const session = new AgentSession(createSessionOptions());
 
 		expect(session.agent.state.messages).toHaveLength(0);
 
@@ -615,13 +539,7 @@ describe("AgentSession", () => {
 			{ role: "user", content: [{ type: "text", text: "New question" }], timestamp: 3 },
 		];
 
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-			messages,
-		});
+		const session = new AgentSession(createSessionOptions({ messages }));
 
 		expect(session.agent.state.messages).toHaveLength(3);
 		expect(session.agent.state.messages[1].role).toBe("compactionSummary");
@@ -633,12 +551,7 @@ describe("AgentSession", () => {
 	});
 
 	test("authStorage is wired via ModelRegistry as the agent's API key resolver", async () => {
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-		});
+		const session = new AgentSession(createSessionOptions());
 
 		expect(session.agent.getApiKey).toBeDefined();
 		expect(session.modelRegistry).toBeDefined();
@@ -649,12 +562,9 @@ describe("AgentSession", () => {
 	test("getAllToolDefinitions returns all registered tools", async () => {
 		const tool1 = createTestTool("tool_x");
 		const tool2 = createTestTool("tool_y");
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment({ tools: [tool1] }),
-			systemPrompt: "Prompt.",
-		});
+		const session = new AgentSession(
+			createSessionOptions({ environment: createMockEnvironment({ tools: [tool1] }) }),
+		);
 
 		session.registerTool(tool2);
 
@@ -669,23 +579,24 @@ describe("AgentSession", () => {
 		const messages: AgentMessage[] = [
 			{ role: "user", content: [{ type: "text", text: "Hello" }], timestamp: 1 },
 		];
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Correct prompt.",
-			thinkingLevel: "off",
-			messages,
-			agentOptions: {
-				initialState: {
-					systemPrompt: "Wrong prompt.",
-					model: { id: "wrong-model", provider: "wrong" } as Parameters<typeof session.setModel>[0],
-					thinkingLevel: "high",
-					tools: [],
-					messages: [],
+		const session = new AgentSession(
+			createSessionOptions({
+				systemPrompt: "Correct prompt.",
+				messages,
+				thinkingLevel: "off",
+				agentOptions: {
+					initialState: {
+						systemPrompt: "Wrong prompt.",
+						model: { id: "wrong-model", provider: "wrong" } as Parameters<
+							typeof session.setModel
+						>[0],
+						thinkingLevel: "high",
+						tools: [],
+						messages: [],
+					},
 				},
-			},
-		});
+			}),
+		);
 
 		expect(session.agent.state.systemPrompt).toBe("Correct prompt.");
 		expect(session.agent.state.thinkingLevel).toBe("off");
@@ -700,18 +611,16 @@ describe("AgentSession", () => {
 		console.warn = (msg: string) => warnings.push(msg);
 
 		try {
-			const session = new AgentSession({
-				sessionManager: createMockSessionManager(),
-				authStorage: createMockAuthStorage(),
-				environment: createMockEnvironment(),
-				systemPrompt: "Prompt.",
-				agentOptions: {
-					initialState: {
-						systemPrompt: "Override.",
-						messages: [],
+			const session = new AgentSession(
+				createSessionOptions({
+					agentOptions: {
+						initialState: {
+							systemPrompt: "Override.",
+							messages: [],
+						},
 					},
-				},
-			});
+				}),
+			);
 			await session.dispose();
 		} finally {
 			console.warn = originalWarn;
@@ -722,17 +631,15 @@ describe("AgentSession", () => {
 	});
 
 	test("agentOptions.initialState non-managed fields pass through", async () => {
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Prompt.",
-			agentOptions: {
-				initialState: {
-					error: "pre-seeded error",
+		const session = new AgentSession(
+			createSessionOptions({
+				agentOptions: {
+					initialState: {
+						error: "pre-seeded error",
+					},
 				},
-			},
-		});
+			}),
+		);
 
 		expect(session.agent.state.error).toBe("pre-seeded error");
 
@@ -740,12 +647,7 @@ describe("AgentSession", () => {
 	});
 
 	test("getSystemPrompt returns the current system prompt", async () => {
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "My prompt.",
-		});
+		const session = new AgentSession(createSessionOptions({ systemPrompt: "My prompt." }));
 
 		expect(session.getSystemPrompt()).toBe("My prompt.");
 
@@ -759,12 +661,7 @@ describe("AgentSession", () => {
 			const handler = vi.fn(() => {});
 			const ext: Extension = (api) => api.on("session_start", handler);
 
-			const session = new AgentSession({
-				sessionManager: createMockSessionManager(),
-				authStorage: createMockAuthStorage(),
-				environment: createMockEnvironment(),
-				systemPrompt: "Prompt.",
-			});
+			const session = new AgentSession(createSessionOptions());
 
 			await session.loadExtensions([ext]);
 
@@ -777,12 +674,7 @@ describe("AgentSession", () => {
 			const handler = vi.fn(() => {});
 			const ext: Extension = (api) => api.on("session_shutdown", handler);
 
-			const session = new AgentSession({
-				sessionManager: createMockSessionManager(),
-				authStorage: createMockAuthStorage(),
-				environment: createMockEnvironment(),
-				systemPrompt: "Prompt.",
-			});
+			const session = new AgentSession(createSessionOptions());
 
 			await session.loadExtensions([ext]);
 			await session.dispose();
@@ -794,12 +686,7 @@ describe("AgentSession", () => {
 			const tool = createTestTool("ext_registered_tool");
 			const ext: Extension = (api) => api.registerTool(tool);
 
-			const session = new AgentSession({
-				sessionManager: createMockSessionManager(),
-				authStorage: createMockAuthStorage(),
-				environment: createMockEnvironment(),
-				systemPrompt: "Prompt.",
-			});
+			const session = new AgentSession(createSessionOptions());
 
 			await session.loadExtensions([ext]);
 
@@ -817,12 +704,7 @@ describe("AgentSession", () => {
 					handler,
 				});
 
-			const session = new AgentSession({
-				sessionManager: createMockSessionManager(),
-				authStorage: createMockAuthStorage(),
-				environment: createMockEnvironment(),
-				systemPrompt: "Prompt.",
-			});
+			const session = new AgentSession(createSessionOptions());
 
 			await session.loadExtensions([ext]);
 
@@ -841,12 +723,7 @@ describe("AgentSession", () => {
 			const startHandler = vi.fn(() => {});
 			const ext: Extension = (api) => api.on("session_start", startHandler);
 
-			const session = new AgentSession({
-				sessionManager: createMockSessionManager(),
-				authStorage: createMockAuthStorage(),
-				environment: createMockEnvironment(),
-				systemPrompt: "Prompt.",
-			});
+			const session = new AgentSession(createSessionOptions());
 
 			await session.loadExtensions([ext]);
 			expect(startHandler).toHaveBeenCalledTimes(1);
@@ -862,13 +739,7 @@ describe("AgentSession", () => {
 			const handler = vi.fn(() => {});
 			const ext: Extension = (api) => api.on("session_start", handler);
 
-			const session = new AgentSession({
-				sessionManager: createMockSessionManager(),
-				authStorage: createMockAuthStorage(),
-				environment: createMockEnvironment(),
-				systemPrompt: "Prompt.",
-				extensions: [ext],
-			});
+			const session = new AgentSession(createSessionOptions({ extensions: [ext] }));
 
 			await session.loadExtensions();
 
@@ -880,12 +751,7 @@ describe("AgentSession", () => {
 		test("agentEnvironment is exposed to extensions via context", async () => {
 			const environment = createMockEnvironment({ systemAppend: "env-context-test" });
 
-			const session = new AgentSession({
-				sessionManager: createMockSessionManager(),
-				authStorage: createMockAuthStorage(),
-				environment,
-				systemPrompt: "Prompt.",
-			});
+			const session = new AgentSession(createSessionOptions({ environment }));
 
 			let capturedEnv: unknown;
 			await session.loadExtensions([
@@ -905,12 +771,7 @@ describe("AgentSession", () => {
 		});
 
 		test("extensionRunner is accessible", async () => {
-			const session = new AgentSession({
-				sessionManager: createMockSessionManager(),
-				authStorage: createMockAuthStorage(),
-				environment: createMockEnvironment(),
-				systemPrompt: "Prompt.",
-			});
+			const session = new AgentSession(createSessionOptions());
 
 			expect(session.extensionRunner).toBeDefined();
 			expect(session.extensionRunner.getCommands()).toHaveLength(0);
@@ -919,15 +780,62 @@ describe("AgentSession", () => {
 		});
 
 		test("modelRegistry is accessible and has built-in models", async () => {
-			const session = new AgentSession({
-				sessionManager: createMockSessionManager(),
-				authStorage: createMockAuthStorage(),
-				environment: createMockEnvironment(),
-				systemPrompt: "Prompt.",
-			});
+			const session = new AgentSession(createSessionOptions());
 
 			expect(session.modelRegistry).toBeDefined();
 			expect(session.modelRegistry.getAll().length).toBeGreaterThan(0);
+
+			await session.dispose();
+		});
+
+		// ─── Async AgentEnvironment ───────────────────────────────────
+
+		test("createAgentSession pre-resolves async environment", async () => {
+			const asyncEnv: AgentEnvironment = {
+				getSystemMessageAppend: async () => "async-env-append",
+				getTools: async () => [],
+			};
+
+			const { session } = await createAgentSession({
+				sessionManager: createMockSessionManager(),
+				authStorage: createMockAuthStorage(),
+				environment: asyncEnv,
+				systemPrompt: "Base.",
+			});
+
+			expect(session.agent.state.systemPrompt).toContain("Base.");
+			expect(session.agent.state.systemPrompt).toContain("async-env-append");
+
+			await session.dispose();
+		});
+
+		test("loadExtensions awaits async environment getSystemMessageAppend", async () => {
+			let callCount = 0;
+			const asyncEnv: AgentEnvironment = {
+				getSystemMessageAppend: async () => {
+					callCount++;
+					return callCount === 1 ? "first-call" : "second-call";
+				},
+				getTools: async () => [],
+			};
+
+			const session = new AgentSession({
+				sessionManager: createMockSessionManager(),
+				authStorage: createMockAuthStorage(),
+				environment: asyncEnv,
+				systemPrompt: "Base.",
+				environmentTools: await asyncEnv.getTools(),
+				environmentAppend: await asyncEnv.getSystemMessageAppend(),
+			});
+
+			// First call was during construction (pre-resolved)
+			expect(session.agent.state.systemPrompt).toContain("first-call");
+			expect(callCount).toBe(1);
+
+			// loadExtensions should await getSystemMessageAppend again
+			await session.loadExtensions();
+			expect(session.agent.state.systemPrompt).toContain("second-call");
+			expect(callCount).toBe(2);
 
 			await session.dispose();
 		});

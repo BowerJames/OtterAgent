@@ -1,4 +1,3 @@
-export type { MaybePromise } from "../utils/maybe-promise.js";
 export type { AgentEnvironment } from "./agent-environment.js";
 export type { AuthStorage } from "./auth-storage.js";
 export type {
@@ -14,6 +13,7 @@ export type {
 	ReadonlySessionManager,
 	EntryId,
 } from "./session-manager.js";
+export type { MaybePromise } from "../utils/maybe-promise.js";
 export type { ResourceLoader } from "./resource-loader.js";
 export type { SkillDefinition } from "./skill-definition.js";
 export type { SkillSupportedAgentEnvironment } from "./skill-supported-agent-environment.js";
