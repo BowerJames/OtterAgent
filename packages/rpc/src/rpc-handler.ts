@@ -9,7 +9,7 @@
  * - Extension UI responses are routed to the RPC UIProvider
  * - Shutdown triggers a graceful sequence: abort → waitForIdle → dispose → stop
  */
-import type { AgentSession, AgentSessionEvent } from "../session/agent-session.js";
+import type { AgentSession, AgentSessionEvent } from "@otter-agent/core";
 import type {
 	ExtensionUIResponse,
 	RpcCommand,

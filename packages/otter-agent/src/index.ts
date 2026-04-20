@@ -33,7 +33,6 @@ export {
 export {
 	UIProvider,
 	NoOpUIProvider,
-	RpcUIProvider,
 	createNoOpUIProvider,
 } from "./ui-providers/index.js";
 
@@ -145,47 +144,3 @@ export type {
 	CreateAgentSessionResult,
 	CustomMessage,
 } from "./session/index.js";
-
-// RPC handler and factory
-export { RpcHandler, createRpcSession } from "./rpc/index.js";
-export type {
-	RpcHandlerOptions,
-	CreateRpcSessionOptions,
-	CreateRpcSessionResult,
-} from "./rpc/index.js";
-
-// RPC protocol
-export type {
-	AbortCommand,
-	CompactCommand,
-	ExtensionUIConfirmRequest,
-	ExtensionUIDialogRequest,
-	ExtensionUIInputRequest,
-	ExtensionUINotifyRequest,
-	ExtensionUIRequest,
-	ExtensionUIResponse,
-	ExtensionUISelectRequest,
-	FollowUpCommand,
-	GetCommandsCommand,
-	GetStateCommand,
-	PromptCommand,
-	RpcAgentEvent,
-	RpcAgentEventName,
-	RpcCommand,
-	RpcCommandInfo,
-	RpcCommandType,
-	RpcErrorResponse,
-	RpcExtensionEventName,
-	RpcGetCommandsData,
-	RpcInboundMessage,
-	RpcOutboundMessage,
-	RpcResponse,
-	RpcResponseDataFor,
-	RpcSessionState,
-	RpcSetModelData,
-	RpcSuccessResponse,
-	RpcTransport,
-	SetModelCommand,
-	SetThinkingLevelCommand,
-	SteerCommand,
-} from "./rpc/index.js";

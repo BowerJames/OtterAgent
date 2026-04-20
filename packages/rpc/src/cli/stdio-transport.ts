@@ -1,4 +1,4 @@
-import type { RpcInboundMessage, RpcOutboundMessage, RpcTransport } from "../../index.js";
+import type { RpcInboundMessage, RpcOutboundMessage, RpcTransport } from "../types.js";
 import { attachJsonlLineReader, serializeJsonLine } from "./jsonl.js";
 
 /**

@@ -1,10 +1,7 @@
 import type { UIProvider as IUIProvider } from "../interfaces/ui-provider.js";
-import type { ExtensionUIResponse, RpcTransport } from "../rpc/types.js";
 import { type NoOpUIProvider, createNoOpUIProvider } from "./no-op-ui-provider.js";
-import { type RpcUIProvider, createRpcUIProvider } from "./rpc-ui-provider.js";
 
 export { createNoOpUIProvider, NoOpUIProvider } from "./no-op-ui-provider.js";
-export { RpcUIProvider } from "./rpc-ui-provider.js";
 
 /**
  * Namespace providing factory methods for built-in {@link IUIProvider}
@@ -17,7 +14,6 @@ export { RpcUIProvider } from "./rpc-ui-provider.js";
  * ```typescript
  * import { UIProvider } from "@otter-agent/core";
  * const ui: UIProvider = UIProvider.noOp();
- * const { uiProvider, resolveResponse, rejectAll } = UIProvider.rpc(transport);
  * ```
  */
 // Empty interface extension enables declaration merging with the namespace below.
@@ -32,19 +28,5 @@ export namespace UIProvider {
 	 */
 	export function noOp(): NoOpUIProvider {
 		return createNoOpUIProvider();
-	}
-
-	/**
-	 * Creates a {@link RpcUIProvider} that bridges extension UI calls to an
-	 * RPC transport. Call `resolveResponse()` when an `extension_ui_response`
-	 * arrives from the client. Call `rejectAll()` during shutdown to clean up
-	 * pending requests.
-	 */
-	export function rpc(transport: RpcTransport): {
-		uiProvider: RpcUIProvider;
-		resolveResponse: (response: ExtensionUIResponse) => void;
-		rejectAll: (reason: string) => void;
-	} {
-		return createRpcUIProvider(transport);
 	}
 }

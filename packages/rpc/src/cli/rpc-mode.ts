@@ -1,5 +1,5 @@
-import type { CreateRpcSessionOptions } from "../../index.js";
-import { createRpcSession } from "../../index.js";
+import { createRpcSession } from "../create-rpc-session.js";
+import type { CreateRpcSessionOptions } from "../create-rpc-session.js";
 import { StdioTransport } from "./stdio-transport.js";
 
 /**
