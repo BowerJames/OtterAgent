@@ -44,6 +44,25 @@ function createMockEnvironment(): AgentEnvironment {
 	};
 }
 
+function createSessionOptions(overrides?: {
+	environment?: AgentEnvironment;
+	sessionManager?: SessionManager;
+	authStorage?: AuthStorage;
+	systemPrompt?: string;
+	uiProvider?: import("../interfaces/ui-provider.js").UIProvider;
+}) {
+	const environment = overrides?.environment ?? createMockEnvironment();
+	return {
+		sessionManager: overrides?.sessionManager ?? createMockSessionManager(),
+		authStorage: overrides?.authStorage ?? createMockAuthStorage(),
+		environment,
+		systemPrompt: overrides?.systemPrompt ?? "Test prompt",
+		environmentTools: environment.getTools(),
+		environmentAppend: environment.getSystemMessageAppend(),
+		...(overrides?.uiProvider !== undefined ? { uiProvider: overrides.uiProvider } : {}),
+	};
+}
+
 interface MockTransport extends RpcTransport {
 	sent: RpcOutboundMessage[];
 	messageHandler: ((message: RpcInboundMessage) => void) | undefined;
@@ -78,13 +97,7 @@ function createMockTransport(): MockTransport {
 function createTestSetup() {
 	const transport = createMockTransport();
 	const { uiProvider, resolveResponse, rejectAll } = createRpcUIProvider(transport);
-	const session = new AgentSession({
-		sessionManager: createMockSessionManager(),
-		authStorage: createMockAuthStorage(),
-		environment: createMockEnvironment(),
-		systemPrompt: "Test prompt",
-		uiProvider,
-	});
+	const session = new AgentSession(createSessionOptions({ uiProvider }));
 	const handler = new RpcHandler({
 		session,
 		transport,
@@ -220,12 +233,7 @@ describe("RpcHandler", () => {
 		const resolveUIResponse = vi.fn((_response: ExtensionUIResponse) => {});
 		const rejectAllUI = vi.fn((_reason: string) => {});
 		const transport = createMockTransport();
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Test",
-		});
+		const session = new AgentSession(createSessionOptions({ systemPrompt: "Test" }));
 
 		const handler = new RpcHandler({
 			session,
@@ -254,13 +262,7 @@ describe("RpcHandler", () => {
 		const resolveUIResponse = vi.fn((_response: ExtensionUIResponse) => {});
 		const transport = createMockTransport();
 		const { uiProvider } = createRpcUIProvider(transport);
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Test",
-			uiProvider,
-		});
+		const session = new AgentSession(createSessionOptions({ systemPrompt: "Test", uiProvider }));
 
 		const handler = new RpcHandler({
 			session,
@@ -280,13 +282,7 @@ describe("RpcHandler", () => {
 		const onShutdown = vi.fn(() => {});
 		const transport = createMockTransport();
 		const { uiProvider, resolveResponse, rejectAll } = createRpcUIProvider(transport);
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Test prompt",
-			uiProvider,
-		});
+		const session = new AgentSession(createSessionOptions({ uiProvider }));
 		const handler = new RpcHandler({
 			session,
 			transport,
@@ -358,13 +354,7 @@ describe("RpcHandler", () => {
 		const commandHandler = vi.fn(async () => {});
 		const transport = createMockTransport();
 		const { uiProvider, resolveResponse, rejectAll } = createRpcUIProvider(transport);
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Test",
-			uiProvider,
-		});
+		const session = new AgentSession(createSessionOptions({ systemPrompt: "Test", uiProvider }));
 
 		await session.loadExtensions([
 			(api) => {
@@ -459,13 +449,7 @@ describe("RpcHandler graceful shutdown", () => {
 		const onShutdown = vi.fn(() => {});
 		const transport = createMockTransport();
 		const { uiProvider, resolveResponse, rejectAll } = createRpcUIProvider(transport);
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Test prompt",
-			uiProvider,
-		});
+		const session = new AgentSession(createSessionOptions({ uiProvider }));
 		const handler = new RpcHandler({
 			session,
 			transport,
@@ -493,13 +477,7 @@ describe("RpcHandler graceful shutdown", () => {
 		const transport = createMockTransport();
 		const { uiProvider, resolveResponse, rejectAll } = createRpcUIProvider(transport);
 		const rejectAllSpy = vi.fn((_reason: string) => rejectAll(_reason));
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Test prompt",
-			uiProvider,
-		});
+		const session = new AgentSession(createSessionOptions({ uiProvider }));
 
 		const handler = new RpcHandler({
 			session,
@@ -535,13 +513,7 @@ describe("RpcHandler graceful shutdown", () => {
 			origSend(message);
 		};
 		const { uiProvider, resolveResponse, rejectAll } = createRpcUIProvider(transport);
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Test prompt",
-			uiProvider,
-		});
+		const session = new AgentSession(createSessionOptions({ uiProvider }));
 		const handler = new RpcHandler({
 			session,
 			transport,
@@ -561,13 +533,7 @@ describe("RpcHandler graceful shutdown", () => {
 		const onShutdown = vi.fn(() => {});
 		const transport = createMockTransport();
 		const { uiProvider, resolveResponse, rejectAll } = createRpcUIProvider(transport);
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Test prompt",
-			uiProvider,
-		});
+		const session = new AgentSession(createSessionOptions({ uiProvider }));
 		const handler = new RpcHandler({
 			session,
 			transport,
@@ -593,12 +559,7 @@ describe("AgentSession slash command interception", () => {
 	test("executes registered extension command on /prefix", async () => {
 		const commandHandler = vi.fn(async () => {});
 
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Test",
-		});
+		const session = new AgentSession(createSessionOptions({ systemPrompt: "Test" }));
 
 		// Load an extension that registers a command
 		await session.loadExtensions([
@@ -620,12 +581,7 @@ describe("AgentSession slash command interception", () => {
 	});
 
 	test("falls through to LLM for unknown /commands", async () => {
-		const session = new AgentSession({
-			sessionManager: createMockSessionManager(),
-			authStorage: createMockAuthStorage(),
-			environment: createMockEnvironment(),
-			systemPrompt: "Test",
-		});
+		const session = new AgentSession(createSessionOptions({ systemPrompt: "Test" }));
 
 		// No extensions registered, so /unknown should fall through
 		// Since no model is set, this will error — but the point is it tries

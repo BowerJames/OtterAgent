@@ -1,3 +1,5 @@
+import type { MaybePromise } from "../utils/maybe-promise.js";
+
 /**
  * Minimal interface for credential retrieval.
  *
@@ -18,5 +20,5 @@ export interface AuthStorage {
 	 * @param provider - The LLM provider identifier (e.g., "anthropic", "openai").
 	 * @returns The API key string, or `undefined` if not available.
 	 */
-	getApiKey(provider: string): Promise<string | undefined>;
+	getApiKey(provider: string): MaybePromise<string | undefined>;
 }

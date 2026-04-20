@@ -1,5 +1,6 @@
 import type { AgentMessage, ThinkingLevel } from "@mariozechner/pi-agent-core";
 import type { ImageContent, TextContent } from "@mariozechner/pi-ai";
+import type { MaybePromise } from "../utils/maybe-promise.js";
 
 /**
  * A unique identifier for a session entry.
@@ -74,7 +75,7 @@ export interface SessionManager {
 	 * @param message - The agent message to persist.
 	 * @returns The unique ID of the created entry.
 	 */
-	appendMessage(message: AgentMessage): Promise<EntryId>;
+	appendMessage(message: AgentMessage): MaybePromise<EntryId>;
 
 	/**
 	 * Build the session context for the LLM.
@@ -91,7 +92,7 @@ export interface SessionManager {
 	 *
 	 * @returns The session context including messages, thinking level, and model.
 	 */
-	buildSessionContext(): Promise<SessionContext>;
+	buildSessionContext(): MaybePromise<SessionContext>;
 
 	/**
 	 * Record a compaction event. When `buildSessionContext()` is called,
@@ -117,7 +118,7 @@ export interface SessionManager {
 		firstKeptEntryId?: EntryId,
 		tokensBefore?: number,
 		details?: unknown,
-	): Promise<EntryId>;
+	): MaybePromise<EntryId>;
 
 	/**
 	 * Persist extension state that is NOT included in LLM context.
@@ -130,7 +131,7 @@ export interface SessionManager {
 	 * @param data - Optional extension-specific data to persist.
 	 * @returns The unique ID of the created entry.
 	 */
-	appendCustomEntry(customType: string, data?: unknown): Promise<EntryId>;
+	appendCustomEntry(customType: string, data?: unknown): MaybePromise<EntryId>;
 
 	/**
 	 * Persist an extension message that IS included in LLM context.
@@ -151,7 +152,7 @@ export interface SessionManager {
 		content: string | (TextContent | ImageContent)[],
 		display: boolean,
 		details?: unknown,
-	): Promise<EntryId>;
+	): MaybePromise<EntryId>;
 
 	/**
 	 * Record a model and thinking level change.
@@ -166,7 +167,7 @@ export interface SessionManager {
 	appendModelChange(
 		model: { provider: string; modelId: string },
 		thinkingLevel: string,
-	): Promise<EntryId>;
+	): MaybePromise<EntryId>;
 
 	/**
 	 * Record a thinking level change.
@@ -177,7 +178,7 @@ export interface SessionManager {
 	 * @param thinkingLevel - The new thinking level.
 	 * @returns The unique ID of the created entry.
 	 */
-	appendThinkingLevelChange(thinkingLevel: string): Promise<EntryId>;
+	appendThinkingLevelChange(thinkingLevel: string): MaybePromise<EntryId>;
 
 	/**
 	 * Attach a label/bookmark to a specific entry.
@@ -189,7 +190,7 @@ export interface SessionManager {
 	 * @param targetEntryId - The ID of the entry to label.
 	 * @returns The unique ID of the label entry.
 	 */
-	appendLabel(label: string, targetEntryId: EntryId): Promise<EntryId>;
+	appendLabel(label: string, targetEntryId: EntryId): MaybePromise<EntryId>;
 
 	/**
 	 * Return all entries for this session in append order.
@@ -204,7 +205,7 @@ export interface SessionManager {
 	 * @returns A read-only snapshot of all entries. Callers must not mutate
 	 *   the returned array or its elements.
 	 */
-	getEntries(): Promise<Entry[]>;
+	getEntries(): MaybePromise<Entry[]>;
 }
 
 /**

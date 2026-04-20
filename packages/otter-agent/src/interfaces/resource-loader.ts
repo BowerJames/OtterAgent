@@ -1,4 +1,5 @@
 import type { CreateAgentSessionOptions } from "../session/agent-session.js";
+import type { MaybePromise } from "../utils/maybe-promise.js";
 
 /**
  * Provides the resources needed to create an agent session.
@@ -14,5 +15,5 @@ export interface ResourceLoader {
 	 * @returns An object satisfying {@link CreateAgentSessionOptions}
 	 *          minus {@link UIProvider}.
 	 */
-	getResources(): Promise<Omit<CreateAgentSessionOptions, "uiProvider">>;
+	getResources(): MaybePromise<Omit<CreateAgentSessionOptions, "uiProvider">>;
 }

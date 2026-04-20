@@ -40,7 +40,10 @@ export interface CreateAgentSessionResult {
  * but without `messages` — the factory always derives messages from
  * {@link SessionManager.buildSessionContext}.
  */
-export type CreateAgentSessionOptions = Omit<AgentSessionOptions, "messages">;
+export type CreateAgentSessionOptions = Omit<
+	AgentSessionOptions,
+	"messages" | "environmentTools" | "environmentAppend"
+>;
 
 /**
  * Async factory that creates an AgentSession with session restore.
@@ -102,12 +105,20 @@ export async function createAgentSession(
 		await sessionManager.appendThinkingLevelChange(thinkingLevel);
 	}
 
-	// 9. Construct and return.
+	// 9. Pre-resolve environment for async-compatible construction.
+	const [environmentTools, environmentAppend] = await Promise.all([
+		options.environment.getTools(),
+		options.environment.getSystemMessageAppend(),
+	]);
+
+	// 10. Construct and return.
 	const session = new AgentSession({
 		...options,
 		model,
 		thinkingLevel,
 		messages: sessionContext.messages,
+		environmentTools,
+		environmentAppend,
 	});
 	return { session };
 }
@@ -163,6 +174,26 @@ export interface AgentSessionOptions {
 
 	/** Additional pi-agent-core Agent options. */
 	agentOptions?: Partial<AgentOptions>;
+
+	/**
+	 * Pre-resolved tools from the environment.
+	 *
+	 * Must be provided by all callers. Use {@link createAgentSession} for
+	 * automatic pre-resolution from an {@link AgentEnvironment} (including
+	 * async environments). Direct construction requires callers to resolve
+	 * these values themselves.
+	 */
+	environmentTools: ToolDefinition[];
+
+	/**
+	 * Pre-resolved system message append from the environment.
+	 *
+	 * Must be provided by all callers. Use {@link createAgentSession} for
+	 * automatic pre-resolution from an {@link AgentEnvironment} (including
+	 * async environments). Direct construction requires callers to resolve
+	 * these values themselves.
+	 */
+	environmentAppend: string | undefined;
 }
 
 /** Event types emitted by AgentSession (superset of pi-agent-core AgentEvent). */
@@ -223,9 +254,9 @@ export class AgentSession {
 		this._extensionRunner.setUIProvider(this.uiProvider);
 		this._extensionRunner.setModelRegistry(this.modelRegistry);
 
-		// Resolve environment at startup (called once)
-		this._environmentAppend = this._environment.getSystemMessageAppend();
-		const environmentTools = this._environment.getTools();
+		// Use pre-resolved environment values.
+		this._environmentAppend = options.environmentAppend;
+		const environmentTools = options.environmentTools;
 
 		// Register environment tools
 		for (const tool of environmentTools) {
@@ -296,7 +327,7 @@ export class AgentSession {
 
 		// Refresh the environment append now that extensions may have modified the
 		// environment (e.g. by registering skills on a SkillSupportedAgentEnvironment).
-		this._environmentAppend = this._environment.getSystemMessageAppend();
+		this._environmentAppend = await this._environment.getSystemMessageAppend();
 		this._applyToolChanges();
 		this._registerSkillCommands();
 	}
@@ -315,7 +346,7 @@ export class AgentSession {
 		await this._extensionRunner.emit({ type: "session_start" });
 
 		// Refresh environment append and skill commands after reload.
-		this._environmentAppend = this._environment.getSystemMessageAppend();
+		this._environmentAppend = await this._environment.getSystemMessageAppend();
 		this._applyToolChanges();
 		this._registerSkillCommands();
 	}
