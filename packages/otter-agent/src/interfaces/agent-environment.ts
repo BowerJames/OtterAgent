@@ -1,3 +1,4 @@
+import type { MaybePromise } from "../utils/maybe-promise.js";
 import type { ToolDefinition } from "./tool-definition.js";
 
 /**
@@ -29,7 +30,7 @@ export interface AgentEnvironment {
 	 * @returns A string to append to the system prompt, or `undefined` if
 	 * the environment has nothing to add.
 	 */
-	getSystemMessageAppend(): string | undefined;
+	getSystemMessageAppend(): MaybePromise<string | undefined>;
 
 	/**
 	 * Tools the environment exposes to the agent for interacting with it.
@@ -41,5 +42,5 @@ export interface AgentEnvironment {
 	 * @returns An array of tool definitions, or an empty array if the
 	 * environment provides no tools.
 	 */
-	getTools(): ToolDefinition[];
+	getTools(): MaybePromise<ToolDefinition[]>;
 }

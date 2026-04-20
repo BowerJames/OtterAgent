@@ -1,3 +1,4 @@
+export type { MaybePromise } from "../utils/maybe-promise.js";
 export type { AgentEnvironment } from "./agent-environment.js";
 export type { AuthStorage } from "./auth-storage.js";
 export type {
