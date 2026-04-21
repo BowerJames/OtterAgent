@@ -1,4 +1,4 @@
-import type { ComponentTemplate, Extension } from "../../index.js";
+import type { ComponentTemplate, Extension } from "@otter-agent/core";
 import { Type } from "@sinclair/typebox";
 
 /**

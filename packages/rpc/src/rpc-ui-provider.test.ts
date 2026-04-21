@@ -1,7 +1,6 @@
 import { describe, expect, test } from "vitest";
-import type { ExtensionUIResponse, RpcOutboundMessage, RpcTransport } from "../rpc/types.js";
-import { UIProvider } from "./index.js";
 import { RpcUIProvider, createRpcUIProvider } from "./rpc-ui-provider.js";
+import type { ExtensionUIResponse, RpcOutboundMessage, RpcTransport } from "./types.js";
 
 // ─── Test Helpers ─────────────────────────────────────────────────────
 
@@ -255,18 +254,18 @@ describe("createRpcUIProvider", () => {
 	});
 });
 
-// ─── UIProvider.rpc() namespace factory ──────────────────────────────
+// ─── createRpcUIProvider factory ──────────────────────────────────────
 
-describe("UIProvider.rpc()", () => {
+describe("createRpcUIProvider()", () => {
 	test("returns uiProvider, resolveResponse, and rejectAll", () => {
-		const { uiProvider, resolveResponse, rejectAll } = UIProvider.rpc(createMockTransport());
+		const { uiProvider, resolveResponse, rejectAll } = createRpcUIProvider(createMockTransport());
 		expect(uiProvider).toBeDefined();
 		expect(resolveResponse).toBeTypeOf("function");
 		expect(rejectAll).toBeTypeOf("function");
 	});
 
 	test("uiProvider implements all UIProvider methods", () => {
-		const { uiProvider } = UIProvider.rpc(createMockTransport());
+		const { uiProvider } = createRpcUIProvider(createMockTransport());
 		expect(uiProvider.dialog).toBeTypeOf("function");
 		expect(uiProvider.confirm).toBeTypeOf("function");
 		expect(uiProvider.input).toBeTypeOf("function");
@@ -276,14 +275,14 @@ describe("UIProvider.rpc()", () => {
 
 	test("each call returns an independent instance", () => {
 		const transport = createMockTransport();
-		const r1 = UIProvider.rpc(transport);
-		const r2 = UIProvider.rpc(transport);
+		const r1 = createRpcUIProvider(transport);
+		const r2 = createRpcUIProvider(transport);
 		expect(r1.uiProvider).not.toBe(r2.uiProvider);
 	});
 
 	test("confirm sends request and resolves via resolveResponse", async () => {
 		const transport = createMockTransport();
-		const { uiProvider, resolveResponse } = UIProvider.rpc(transport);
+		const { uiProvider, resolveResponse } = createRpcUIProvider(transport);
 
 		const confirmPromise = uiProvider.confirm("Title", "Body");
 		const req = getUIRequests(transport)[0] as { id: string };
@@ -325,7 +324,7 @@ describe("RpcUIProvider — direct construction", () => {
 
 	test("namespace factory result is instanceof RpcUIProvider", () => {
 		const transport = createMockTransport();
-		const { uiProvider } = UIProvider.rpc(transport);
+		const { uiProvider } = createRpcUIProvider(transport);
 		expect(uiProvider instanceof RpcUIProvider).toBe(true);
 	});
 });

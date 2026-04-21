@@ -1,10 +1,10 @@
+import type { AgentEnvironment } from "@otter-agent/core";
+import type { AuthStorage } from "@otter-agent/core";
+import type { SessionManager } from "@otter-agent/core";
+import { AgentSession } from "@otter-agent/core";
 import { describe, expect, test, vi } from "vitest";
-import type { AgentEnvironment } from "../interfaces/agent-environment.js";
-import type { AuthStorage } from "../interfaces/auth-storage.js";
-import type { SessionManager } from "../interfaces/session-manager.js";
-import { AgentSession } from "../session/agent-session.js";
-import { createRpcUIProvider } from "../ui-providers/rpc-ui-provider.js";
 import { RpcHandler } from "./rpc-handler.js";
+import { createRpcUIProvider } from "./rpc-ui-provider.js";
 import type { ExtensionUIResponse } from "./types.js";
 import type {
 	RpcAgentEvent,
@@ -49,7 +49,7 @@ function createSessionOptions(overrides?: {
 	sessionManager?: SessionManager;
 	authStorage?: AuthStorage;
 	systemPrompt?: string;
-	uiProvider?: import("../interfaces/ui-provider.js").UIProvider;
+	uiProvider?: import("@otter-agent/core").UIProvider;
 }) {
 	const environment = overrides?.environment ?? createMockEnvironment();
 	return {

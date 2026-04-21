@@ -8,8 +8,8 @@
  *
  * Follows the same UUID-based pending-promise pattern as pi-coding-agent.
  */
-import type { UIProvider } from "../interfaces/ui-provider.js";
-import type { ExtensionUIRequest, ExtensionUIResponse, RpcTransport } from "../rpc/types.js";
+import type { UIProvider } from "@otter-agent/core";
+import type { ExtensionUIRequest, ExtensionUIResponse, RpcTransport } from "./types.js";
 
 interface PendingRequest {
 	resolve: (response: ExtensionUIResponse) => void;

@@ -1,7 +1,7 @@
+import type { AgentEnvironment } from "@otter-agent/core";
+import type { AuthStorage } from "@otter-agent/core";
+import type { SessionManager } from "@otter-agent/core";
 import { describe, expect, test, vi } from "vitest";
-import type { AgentEnvironment } from "../interfaces/agent-environment.js";
-import type { AuthStorage } from "../interfaces/auth-storage.js";
-import type { SessionManager } from "../interfaces/session-manager.js";
 import { createRpcSession } from "./create-rpc-session.js";
 import type { ExtensionUIResponse, RpcOutboundMessage, RpcTransport } from "./types.js";
 
