@@ -4,7 +4,8 @@
 	"type": "module",
 	"workspaces": ["packages/*"],
 	"scripts": {
-		"build": "npm run build --workspaces",
+		"clean": "npm run clean --workspaces",
+		"build": "npm run build -w packages/core -w packages/auth-storage-registry -w packages/environment-registry -w packages/extension-registry -w packages/session-manager-registry -w packages/rpc -w packages/cli",
 		"test": "vitest run",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
