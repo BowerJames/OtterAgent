@@ -1,0 +1,11 @@
+{
+	"environment": { "name": "just-bash", "config": { "cwd": "/tmp" } },
+	"session-manager": { "name": "in-memory" },
+	"auth-storage": { "name": "in-memory" },
+	"system-prompt": "You are a helpful AI assistant.",
+	"provider": "anthropic",
+	"model": "claude-sonnet-4-5-20250514",
+	"thinking-level": "medium",
+	"agent-options": {},
+	"extensions": [{ "name": "no-op" }, { "filepath": "./valid-extension.ts", "config": { "apiKey": "sk-test-123", "maxRetries": 5 } }]
+}

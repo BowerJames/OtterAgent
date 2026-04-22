@@ -1,0 +1,4 @@
+environment:
+  name: just-bash
+session-manager:
+  name: in-memory

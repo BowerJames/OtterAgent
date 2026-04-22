@@ -1,88 +1,84 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
-import { loadExtensionsFromConfigFiles } from "./load-extensions.js";
+import { loadExtensionsFromReferences } from "./load-extensions.js";
 
-// Resolve the fixtures directory relative to this test file
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const fixturesDir = resolve(__dirname, "fixtures");
 
-// Paths to fixture files
-const validJsonConfig = resolve(fixturesDir, "valid-extension.json");
-const validJsonNoConfig = resolve(fixturesDir, "valid-extension-no-config.json");
-const validYamlConfig = resolve(fixturesDir, "valid-extension.yaml");
-const validYamlNoConfig = resolve(fixturesDir, "valid-extension-no-config.yaml");
-const badJsonConfig = resolve(fixturesDir, "bad-config.json");
-const noExportRefConfig = resolve(fixturesDir, "no-export-ref.json");
-const nonExistentPathConfig = resolve(fixturesDir, "non-existent-path.json");
-const invalidConfigJson = resolve(fixturesDir, "invalid-config.json");
-
-describe("loadExtensionsFromConfigFiles", () => {
-	test("successfully loads a single extension", async () => {
-		const extensions = await loadExtensionsFromConfigFiles([validJsonConfig]);
+describe("loadExtensionsFromReferences", () => {
+	test("loads a single extension by filepath", async () => {
+		const extensions = await loadExtensionsFromReferences(
+			[{ filepath: "./valid-extension.ts", config: { apiKey: "test", maxRetries: 3 } }],
+			fixturesDir,
+		);
 		expect(extensions.length).toBe(1);
 		expect(typeof extensions[0]).toBe("function");
 	});
 
-	test("successfully loads multiple extensions from multiple config files", async () => {
-		const extensions = await loadExtensionsFromConfigFiles([validJsonConfig, validYamlConfig]);
+	test("loads a single extension by name from registry", async () => {
+		const extensions = await loadExtensionsFromReferences([{ name: "no-op" }], fixturesDir);
+		expect(extensions.length).toBe(1);
+		expect(typeof extensions[0]).toBe("function");
+	});
+
+	test("loads multiple extensions mixing name and filepath", async () => {
+		const extensions = await loadExtensionsFromReferences(
+			[
+				{ name: "no-op" },
+				{ filepath: "./valid-extension.ts", config: { apiKey: "test", maxRetries: 3 } },
+			],
+			fixturesDir,
+		);
 		expect(extensions.length).toBe(2);
 		for (const ext of extensions) {
 			expect(typeof ext).toBe("function");
 		}
 	});
 
-	test("loads YAML config files", async () => {
-		const extensions = await loadExtensionsFromConfigFiles([validYamlConfig]);
-		expect(extensions.length).toBe(1);
-		expect(typeof extensions[0]).toBe("function");
-	});
-
-	test("uses template defaults when config is omitted", async () => {
-		const extensions = await loadExtensionsFromConfigFiles([validJsonNoConfig]);
-		expect(extensions.length).toBe(1);
-		expect(typeof extensions[0]).toBe("function");
-	});
-
-	test("uses template defaults when config is omitted (YAML)", async () => {
-		const extensions = await loadExtensionsFromConfigFiles([validYamlNoConfig]);
-		expect(extensions.length).toBe(1);
-		expect(typeof extensions[0]).toBe("function");
-	});
-
-	test("returns empty array when no config paths provided", async () => {
-		const extensions = await loadExtensionsFromConfigFiles([]);
+	test("returns empty array for empty references", async () => {
+		const extensions = await loadExtensionsFromReferences([], fixturesDir);
 		expect(extensions).toEqual([]);
 	});
 
-	test("skips a bad config file and returns empty array", async () => {
-		const extensions = await loadExtensionsFromConfigFiles([badJsonConfig]);
+	test("skips invalid filepath and returns empty array", async () => {
+		const extensions = await loadExtensionsFromReferences(
+			[{ filepath: "./non-existent.ts" }],
+			fixturesDir,
+		);
 		expect(extensions).toEqual([]);
 	});
 
-	test("skips a template with no default export and returns empty array", async () => {
-		const extensions = await loadExtensionsFromConfigFiles([noExportRefConfig]);
+	test("skips unknown registry name and returns empty array", async () => {
+		const extensions = await loadExtensionsFromReferences(
+			[{ name: "does-not-exist" }],
+			fixturesDir,
+		);
 		expect(extensions).toEqual([]);
 	});
 
-	test("skips a non-existent template path and returns empty array", async () => {
-		const extensions = await loadExtensionsFromConfigFiles([nonExistentPathConfig]);
-		expect(extensions).toEqual([]);
-	});
-
-	test("skips a config validation failure and returns empty array", async () => {
-		const extensions = await loadExtensionsFromConfigFiles([invalidConfigJson]);
+	test("skips invalid config and returns empty array", async () => {
+		const extensions = await loadExtensionsFromReferences(
+			[{ filepath: "./valid-extension.ts", config: { maxRetries: "not-a-number" } }],
+			fixturesDir,
+		);
 		expect(extensions).toEqual([]);
 	});
 
 	test("skips bad extension and returns only valid ones", async () => {
-		const extensions = await loadExtensionsFromConfigFiles([badJsonConfig, validJsonConfig]);
+		const extensions = await loadExtensionsFromReferences(
+			[{ filepath: "./non-existent.ts" }, { name: "no-op" }],
+			fixturesDir,
+		);
 		expect(extensions.length).toBe(1);
 		expect(typeof extensions[0]).toBe("function");
 	});
 
-	test("skips extension with validation failure and returns valid ones", async () => {
-		const extensions = await loadExtensionsFromConfigFiles([invalidConfigJson, validJsonConfig]);
+	test("skips config validation failure and returns valid ones", async () => {
+		const extensions = await loadExtensionsFromReferences(
+			[{ filepath: "./valid-extension.ts", config: { maxRetries: "bad" } }, { name: "no-op" }],
+			fixturesDir,
+		);
 		expect(extensions.length).toBe(1);
 		expect(typeof extensions[0]).toBe("function");
 	});

@@ -1,32 +1,8 @@
-import { readFileSync } from "node:fs";
-import { dirname, extname, isAbsolute, resolve } from "node:path";
+import { isAbsolute, resolve } from "node:path";
 import type { ComponentTemplate } from "@otter-agent/core";
 import { ComponentConfigValidationError, validateComponentConfig } from "@otter-agent/core";
 import type { TSchema } from "@sinclair/typebox";
-import { parse as parseYaml } from "yaml";
-
-/**
- * Parsed component config entry.
- */
-export interface ComponentConfigEntry {
-	/** Path to the module exporting a ComponentTemplate as its default export. */
-	path: string;
-	/** User-provided config to validate and pass to the template builder. */
-	config: Record<string, unknown>;
-}
-
-/**
- * Error thrown when a component config file cannot be parsed or is invalid.
- */
-export class ComponentConfigFileError extends Error {
-	constructor(
-		public readonly filePath: string,
-		message: string,
-	) {
-		super(`Component config file "${filePath}": ${message}`);
-		this.name = "ComponentConfigFileError";
-	}
-}
+import type { ComponentReference } from "./config.js";
 
 /**
  * Error thrown when a component template cannot be loaded.
@@ -42,83 +18,6 @@ export class ComponentLoadError extends Error {
 }
 
 /**
- * Parse a component config file (JSON or YAML).
- *
- * The file must contain a JSON object or YAML mapping with at least a
- * `path` property (string) pointing to the component template module.
- * An optional `config` property provides configuration to validate
- * against the template's schema.
- *
- * This function is also used internally by {@link load-extensions.ts} for
- * extension config parsing.
- *
- * @param filePath - Absolute or relative path to the config file.
- * @returns The parsed config entry.
- * @throws {ComponentConfigFileError} If the file cannot be read, parsed,
- *   or is missing the required `path` property.
- */
-export function parseComponentConfigFile(filePath: string): ComponentConfigEntry {
-	let content: string;
-	try {
-		content = readFileSync(filePath, "utf-8");
-	} catch (err) {
-		throw new ComponentConfigFileError(filePath, err instanceof Error ? err.message : String(err));
-	}
-
-	const ext = extname(filePath).toLowerCase();
-	let parsed: unknown;
-
-	if (ext === ".json") {
-		try {
-			parsed = JSON.parse(content);
-		} catch (err) {
-			throw new ComponentConfigFileError(
-				filePath,
-				`Invalid JSON: ${err instanceof Error ? err.message : String(err)}`,
-			);
-		}
-	} else if (ext === ".yaml" || ext === ".yml") {
-		try {
-			parsed = parseYaml(content);
-		} catch (err) {
-			throw new ComponentConfigFileError(
-				filePath,
-				`Invalid YAML: ${err instanceof Error ? err.message : String(err)}`,
-			);
-		}
-	} else {
-		throw new ComponentConfigFileError(
-			filePath,
-			`Unsupported file extension "${ext}". Expected .json, .yaml, or .yml.`,
-		);
-	}
-
-	if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-		throw new ComponentConfigFileError(
-			filePath,
-			"Config file must contain a JSON object or YAML mapping.",
-		);
-	}
-
-	const record = parsed as Record<string, unknown>;
-
-	if (typeof record.path !== "string" || record.path.length === 0) {
-		throw new ComponentConfigFileError(
-			filePath,
-			'Missing or invalid "path" property. It must be a non-empty string pointing to a template module.',
-		);
-	}
-
-	return {
-		path: record.path,
-		config:
-			typeof record.config === "object" && record.config !== null && !Array.isArray(record.config)
-				? (record.config as Record<string, unknown>)
-				: {},
-	};
-}
-
-/**
  * Resolve a template path for use with `import()`.
  *
  * Uses a path-prefix heuristic:
@@ -127,7 +26,7 @@ export function parseComponentConfigFile(filePath: string): ComponentConfigEntry
  * - Anything else → package specifier, passed directly to `import()`
  *   (e.g. `@otter-agent/core/dist/...` resolves through node_modules)
  *
- * @param templatePath - The `path` value from the config file.
+ * @param templatePath - The `filepath` value from the config.
  * @param configDir - Directory of the config file; used to resolve relative paths.
  * @returns The path or specifier to pass to `import()`.
  */
@@ -190,22 +89,29 @@ export async function loadComponentTemplate<TInstance>(
 }
 
 /**
- * Load and build a component from a config file path.
+ * Resolve a ComponentReference to a built instance.
  *
- * This is the full pipeline: parse config file → load template → validate
- * config → build instance. Any error at any stage throws (fatal).
+ * For `{ name, config }` — delegates to the registry builder.
+ * For `{ filepath, config }` — loads the template module, validates config, builds.
  *
- * @param configPath - Path to the JSON or YAML config file.
+ * @param ref - The component reference from the config file.
+ * @param configDir - Directory of the config file; used to resolve relative paths.
+ * @param registryBuilder - A function that builds a component by registry name.
  * @returns The built component instance.
- * @throws {ComponentConfigFileError} If the config file is invalid.
- * @throws {ComponentLoadError} If the template module cannot be loaded.
+ * @throws {ComponentLoadError} If the component cannot be loaded or built.
  * @throws {ComponentConfigValidationError} If config validation fails.
  */
-export async function loadComponent<TInstance>(configPath: string): Promise<TInstance> {
-	const entry = parseComponentConfigFile(configPath);
-	const configDir = dirname(configPath);
-	const template = await loadComponentTemplate<TInstance>(entry.path, configDir);
-	return validateComponentConfig(template, entry.config);
+export async function resolveComponentFromReference<T>(
+	ref: ComponentReference,
+	configDir: string,
+	registryBuilder: (options: { name: string; config: unknown }) => T,
+): Promise<T> {
+	if ("name" in ref) {
+		return registryBuilder({ name: ref.name, config: ref.config ?? {} });
+	}
+
+	const template = await loadComponentTemplate<T>(ref.filepath, configDir);
+	return validateComponentConfig(template, ref.config ?? {});
 }
 
 export { ComponentConfigValidationError };

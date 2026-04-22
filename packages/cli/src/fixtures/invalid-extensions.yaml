@@ -1,0 +1,12 @@
+environment:
+  name: just-bash
+session-manager:
+  name: in-memory
+auth-storage:
+  name: in-memory
+system-prompt: "You are a helpful AI assistant."
+provider: anthropic
+model: claude-sonnet-4-5-20250514
+thinking-level: off
+agent-options: {}
+extensions: "not-an-array"

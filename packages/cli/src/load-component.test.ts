@@ -3,58 +3,14 @@ import { fileURLToPath } from "node:url";
 import { ComponentConfigValidationError } from "@otter-agent/core";
 import { describe, expect, test } from "vitest";
 import {
-	ComponentConfigFileError,
 	ComponentLoadError,
-	loadComponent,
 	loadComponentTemplate,
-	parseComponentConfigFile,
+	resolveComponentFromReference,
 	resolveTemplatePath,
 } from "./load-component.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const fixturesDir = resolve(__dirname, "fixtures");
-
-const validSmJson = resolve(fixturesDir, "valid-session-manager.json");
-const badJsonConfig = resolve(fixturesDir, "bad-config.json");
-const missingPathConfig = resolve(fixturesDir, "missing-path.json");
-const nonExistentFile = resolve(fixturesDir, "does-not-exist.json");
-const noExportRefConfig = resolve(fixturesDir, "no-export-ref.json");
-const nonExistentPathConfig = resolve(fixturesDir, "non-existent-path.json");
-const unsupportedExt = resolve(fixturesDir, "unsupported.txt");
-
-describe("parseComponentConfigFile", () => {
-	test("parses a valid JSON config file", () => {
-		const entry = parseComponentConfigFile(validSmJson);
-		expect(entry.path).toBe("./valid-session-manager.ts");
-		expect(entry.config).toEqual({ label: "test-session" });
-	});
-
-	test("throws ComponentConfigFileError for non-existent file", () => {
-		expect(() => parseComponentConfigFile(nonExistentFile)).toThrow(ComponentConfigFileError);
-	});
-
-	test("throws ComponentConfigFileError for invalid JSON", () => {
-		expect(() => parseComponentConfigFile(badJsonConfig)).toThrow(ComponentConfigFileError);
-	});
-
-	test("throws ComponentConfigFileError for missing path", () => {
-		expect(() => parseComponentConfigFile(missingPathConfig)).toThrow(ComponentConfigFileError);
-	});
-
-	test("throws ComponentConfigFileError for unsupported extension", () => {
-		expect(() => parseComponentConfigFile(unsupportedExt)).toThrow(ComponentConfigFileError);
-	});
-
-	test("ComponentConfigFileError includes filePath", () => {
-		try {
-			parseComponentConfigFile(nonExistentFile);
-			expect.unreachable("Should have thrown");
-		} catch (err) {
-			expect(err).toBeInstanceOf(ComponentConfigFileError);
-			expect((err as ComponentConfigFileError).filePath).toBe(nonExistentFile);
-		}
-	});
-});
 
 describe("resolveTemplatePath", () => {
 	test("resolves relative paths against configDir", () => {
@@ -128,23 +84,80 @@ describe("loadComponentTemplate", () => {
 	});
 });
 
-describe("loadComponent", () => {
-	test("loads and builds a component from a JSON config", async () => {
-		const instance = await loadComponent(validSmJson);
+describe("resolveComponentFromReference", () => {
+	test("delegates to registryBuilder for name-based references", async () => {
+		const instance = await resolveComponentFromReference(
+			{ name: "test-component", config: { foo: "bar" } },
+			fixturesDir,
+			(options) => {
+				expect(options.name).toBe("test-component");
+				expect(options.config).toEqual({ foo: "bar" });
+				return { built: true } as unknown as SessionManager;
+			},
+		);
+		expect(instance).toEqual({ built: true });
+	});
+
+	test("uses empty config when not provided for name-based references", async () => {
+		await resolveComponentFromReference({ name: "test-component" }, fixturesDir, (options) => {
+			expect(options.config).toEqual({});
+			return { built: true } as unknown as SessionManager;
+		});
+	});
+
+	test("loads and builds from filepath", async () => {
+		const instance = await resolveComponentFromReference(
+			{ filepath: "./valid-session-manager.ts", config: { label: "from-ref" } },
+			fixturesDir,
+			() => {
+				throw new Error("Should not call registry builder for filepath");
+			},
+		);
 		expect(instance).toBeDefined();
-		// The fixture builds an InMemorySessionManager — check a known method
 		expect(typeof (instance as { getEntries?: unknown }).getEntries).toBe("function");
 	});
 
-	test("throws ComponentConfigFileError for bad config file", async () => {
-		await expect(loadComponent(badJsonConfig)).rejects.toThrow(ComponentConfigFileError);
+	test("uses template defaults when config not provided for filepath", async () => {
+		const instance = await resolveComponentFromReference(
+			{ filepath: "./valid-session-manager.ts" },
+			fixturesDir,
+			() => {
+				throw new Error("Should not call registry builder for filepath");
+			},
+		);
+		expect(instance).toBeDefined();
 	});
 
-	test("throws ComponentLoadError for missing template", async () => {
-		await expect(loadComponent(nonExistentPathConfig)).rejects.toThrow(ComponentLoadError);
+	test("throws when registry builder fails", async () => {
+		await expect(
+			resolveComponentFromReference({ name: "unknown" }, fixturesDir, () => {
+				throw new Error("Unknown component: unknown");
+			}),
+		).rejects.toThrow("Unknown component: unknown");
 	});
 
-	test("throws ComponentLoadError for no-export template reference", async () => {
-		await expect(loadComponent(noExportRefConfig)).rejects.toThrow(ComponentLoadError);
+	test("throws ComponentLoadError for invalid filepath", async () => {
+		await expect(
+			resolveComponentFromReference({ filepath: "./non-existent.ts" }, fixturesDir, () => {
+				throw new Error("Should not call registry builder");
+			}),
+		).rejects.toThrow(ComponentLoadError);
+	});
+
+	test("throws ComponentConfigValidationError for invalid config", async () => {
+		await expect(
+			resolveComponentFromReference(
+				{ filepath: "./valid-extension.ts", config: { maxRetries: "not-a-number" } },
+				fixturesDir,
+				() => {
+					throw new Error("Should not call registry builder");
+				},
+			),
+		).rejects.toThrow(ComponentConfigValidationError);
 	});
 });
+
+// Type used in tests
+interface SessionManager {
+	getEntries?: unknown;
+}
