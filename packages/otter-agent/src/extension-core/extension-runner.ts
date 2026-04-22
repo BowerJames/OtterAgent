@@ -11,7 +11,6 @@ import type { EntryId, ReadonlySessionManager } from "../interfaces/session-mana
 import type { ToolDefinition } from "../interfaces/tool-definition.js";
 import type { UIProvider } from "../interfaces/ui-provider.js";
 import type { ModelRegistry } from "../session/model-registry.js";
-import { createNoOpUIProvider } from "../ui-providers/no-op-ui-provider.js";
 import type { CommandInfo, CommandOptions } from "./commands.js";
 import type { CompactOptions, ExtensionCommandContext, ExtensionContext } from "./context.js";
 import { createEventBus } from "./event-bus-impl.js";
@@ -94,22 +93,17 @@ export class ExtensionRunner {
 	private readonly _eventBus: EventBus & { clear(): void };
 	private readonly _errorListeners: Set<ErrorListener> = new Set();
 	private _actions: ExtensionRunnerActions | undefined;
-	private _uiProvider: UIProvider;
+	private readonly _uiProvider: UIProvider;
 	private _modelRegistry: ModelRegistry | undefined;
 
-	constructor() {
+	constructor(uiProvider: UIProvider) {
 		this._eventBus = createEventBus();
-		this._uiProvider = createNoOpUIProvider();
+		this._uiProvider = uiProvider;
 	}
 
 	/** Bind the actions provided by AgentSession. Must be called before dispatching events. */
 	bindActions(actions: ExtensionRunnerActions): void {
 		this._actions = actions;
-	}
-
-	/** Set the UI provider for extension contexts. */
-	setUIProvider(provider: UIProvider): void {
-		this._uiProvider = provider;
 	}
 
 	/** Set the model registry for provider management. */

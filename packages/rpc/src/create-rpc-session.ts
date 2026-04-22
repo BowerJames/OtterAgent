@@ -11,16 +11,13 @@
  */
 import type { AgentOptions, ThinkingLevel } from "@mariozechner/pi-agent-core";
 import type { Api, Model } from "@mariozechner/pi-ai";
-import {
-	createAgentSession,
-	createInMemoryAuthStorage,
-	createInMemorySessionManager,
-} from "@otter-agent/core";
+import { createAgentSession, createInMemoryAuthStorage } from "@otter-agent/core";
 import type { Extension } from "@otter-agent/core";
 import type { AgentEnvironment } from "@otter-agent/core";
 import type { AuthStorage } from "@otter-agent/core";
 import type { SessionManager } from "@otter-agent/core";
 import type { AgentSession } from "@otter-agent/core";
+import { createInMemorySessionManager } from "./in-memory-session-manager.js";
 import { RpcHandler } from "./rpc-handler.js";
 import { createRpcUIProvider } from "./rpc-ui-provider.js";
 import type { RpcTransport } from "./types.js";
