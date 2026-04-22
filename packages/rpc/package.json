@@ -2,9 +2,6 @@
 	"name": "@otter-agent/rpc",
 	"version": "0.0.1",
 	"type": "module",
-	"bin": {
-		"otter": "./dist/cli/cli.js"
-	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"exports": {
@@ -24,7 +21,6 @@
 		"@mariozechner/pi-agent-core": "^0.64.0",
 		"@mariozechner/pi-ai": "^0.64.0",
 		"@otter-agent/core": "*",
-		"@sinclair/typebox": "^0.34.0",
-		"yaml": "^2.7.0"
+		"@sinclair/typebox": "^0.34.0"
 	}
 }

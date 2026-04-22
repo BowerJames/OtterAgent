@@ -1,5 +1,6 @@
 import type { AgentEnvironment, AuthStorage, SessionManager } from "@otter-agent/core";
 import { ModelRegistry } from "@otter-agent/core";
+import { runRpcMode } from "@otter-agent/rpc";
 import { parseCliArgs, printHelp } from "./args.js";
 import { buildAuthStorageFromEnv } from "./auth.js";
 import {
@@ -9,7 +10,6 @@ import {
 	loadComponent,
 } from "./load-component.js";
 import { loadExtensionsFromConfigFiles } from "./load-extensions.js";
-import { runRpcMode } from "./rpc-mode.js";
 
 const VERSION = "0.0.1";
 

@@ -1,0 +1,22 @@
+{
+	"name": "@otter-agent/cli",
+	"version": "0.0.1",
+	"type": "module",
+	"bin": {
+		"otter": "./dist/cli.js"
+	},
+	"files": ["dist/", "README.md", "LICENSE"],
+	"scripts": {
+		"clean": "rm -rf dist",
+		"build": "tsc",
+		"test": "vitest run",
+		"dev": "tsc --watch"
+	},
+	"dependencies": {
+		"@otter-agent/core": "*",
+		"@otter-agent/rpc": "*",
+		"@otter-agent/session-manager-registry": "*",
+		"@sinclair/typebox": "^0.34.0",
+		"yaml": "^2.7.0"
+	}
+}
