@@ -1,0 +1,26 @@
+{
+	"name": "@otter-agent/session-manager-registry",
+	"version": "0.0.1",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": ["dist/"],
+	"scripts": {
+		"clean": "rm -rf dist",
+		"build": "tsc",
+		"test": "vitest run",
+		"dev": "tsc --watch"
+	},
+	"dependencies": {
+		"@mariozechner/pi-agent-core": "^0.64.0",
+		"@mariozechner/pi-ai": "^0.64.0",
+		"@otter-agent/core": "*",
+		"@sinclair/typebox": "^0.34.0"
+	}
+}
