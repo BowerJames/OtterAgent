@@ -2,6 +2,7 @@
 export type {
 	AgentEnvironment,
 	AgentEnvironmentTemplate,
+	AuthStorage,
 	AuthStorageTemplate,
 	ComponentTemplate,
 	Entry,
@@ -20,22 +21,6 @@ export { isSkillSupportedAgentEnvironment } from "./interfaces/index.js";
 
 // Default environment extension — wires any AgentEnvironment into the extension system.
 export { createEnvironmentExtension } from "./environment/environment-extension.js";
-
-// Built-in AuthStorage implementations.
-// AuthStorage is exported as both a type (the interface) and a value
-// (namespace with factory methods) via declaration merging in auth-storages/index.ts.
-export {
-	AuthStorage,
-	InMemoryAuthStorage,
-	InMemoryAuthStorageOptionsSchema,
-	InMemoryAuthStorageTemplate,
-	SqliteAuthStorage,
-	SqliteAuthStorageOptionsSchema,
-	SqliteAuthStorageTemplate,
-	createInMemoryAuthStorage,
-	createSqliteAuthStorage,
-	type SqliteAuthStorageOptions,
-} from "./auth-storages/index.js";
 
 // ExtensionsAPI
 export type {
