@@ -111,4 +111,10 @@ describe("parseCliArgs", () => {
 		expect(stdout).toContain("Usage:");
 		expect(stdout).toContain("run --config");
 	});
+
+	test("no args prints usage", async () => {
+		const { exitCode, stdout } = await runCli([]);
+		expect(exitCode).toBe(0);
+		expect(stdout).toContain("Usage:");
+	});
 });

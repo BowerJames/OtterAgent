@@ -55,7 +55,11 @@ export class ConfigFileError extends Error {
 /**
  * Validate that a ComponentReference has exactly one of `name` or `filepath`.
  */
-function validateComponentReference(ref: unknown, label: string): ref is ComponentReference {
+function validateComponentReference(
+	ref: unknown,
+	label: string,
+	filePath: string,
+): ref is ComponentReference {
 	if (typeof ref !== "object" || ref === null || Array.isArray(ref)) {
 		return false;
 	}
@@ -64,13 +68,13 @@ function validateComponentReference(ref: unknown, label: string): ref is Compone
 	const hasFilepath = typeof record.filepath === "string" && record.filepath.length > 0;
 	if (!hasName && !hasFilepath) {
 		throw new ConfigFileError(
-			"",
+			filePath,
 			`"${label}" must have either "name" or "filepath", but neither was provided.`,
 		);
 	}
 	if (hasName && hasFilepath) {
 		throw new ConfigFileError(
-			"",
+			filePath,
 			`"${label}" must have either "name" or "filepath", but both were provided.`,
 		);
 	}
@@ -81,7 +85,7 @@ function validateComponentReference(ref: unknown, label: string): ref is Compone
 			record.config === null ||
 			Array.isArray(record.config)
 		) {
-			throw new ConfigFileError("", `"${label}".config must be an object if provided.`);
+			throw new ConfigFileError(filePath, `"${label}".config must be an object if provided.`);
 		}
 	}
 	return true;
@@ -184,12 +188,12 @@ export function parseOtterConfig(filePath: string): OtterConfig {
 	}
 
 	// --- Validate component references ---
-	validateComponentReference(record.environment, "environment");
-	validateComponentReference(record["session-manager"], "session-manager");
-	validateComponentReference(record["auth-storage"], "auth-storage");
+	validateComponentReference(record.environment, "environment", filePath);
+	validateComponentReference(record["session-manager"], "session-manager", filePath);
+	validateComponentReference(record["auth-storage"], "auth-storage", filePath);
 
 	for (let i = 0; i < record.extensions.length; i++) {
-		validateComponentReference(record.extensions[i], `extensions[${i}]`);
+		validateComponentReference(record.extensions[i], `extensions[${i}]`, filePath);
 	}
 
 	return record as unknown as OtterConfig;

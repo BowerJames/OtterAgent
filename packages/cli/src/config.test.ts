@@ -157,4 +157,18 @@ describe("parseOtterConfig", () => {
 			expect(msg).toContain("neither");
 		}
 	});
+
+	test("throws ConfigFileError for empty extension ref {}", () => {
+		const emptyExtPath = resolve(fixturesDir, "invalid-extension-empty.yaml");
+		try {
+			parseOtterConfig(emptyExtPath);
+			expect.unreachable("Should have thrown");
+		} catch (err) {
+			expect(err).toBeInstanceOf(ConfigFileError);
+			const msg = (err as ConfigFileError).message;
+			expect(msg).toContain("extensions[0]");
+			expect(msg).toContain("neither");
+			expect((err as ConfigFileError).filePath).toBe(emptyExtPath);
+		}
+	});
 });

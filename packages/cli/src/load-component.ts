@@ -18,20 +18,6 @@ export class ComponentLoadError extends Error {
 }
 
 /**
- * Error thrown when a component config file cannot be parsed or is invalid.
- * Kept for backwards compatibility with existing error handling patterns.
- */
-export class ComponentConfigFileError extends Error {
-	constructor(
-		public readonly filePath: string,
-		message: string,
-	) {
-		super(`Component config file "${filePath}": ${message}`);
-		this.name = "ComponentConfigFileError";
-	}
-}
-
-/**
  * Resolve a template path for use with `import()`.
  *
  * Uses a path-prefix heuristic:

@@ -1,7 +1,7 @@
 import { parseArgs } from "node:util";
 
 export type ParsedArgs =
-	| { command: "run"; configPath: string; mode: string }
+	| { command: "run"; configPath: string; mode: "rpc" }
 	| { command: "help" }
 	| { command: "version" };
 
@@ -25,10 +25,9 @@ export function printHelp(): void {
 }
 
 export function parseCliArgs(argv: string[]): ParsedArgs {
-	// No args or help/version flags → handle immediately
+	// No args → show help
 	if (argv.length === 0) {
-		printHelp();
-		process.exit(0);
+		return { command: "help" };
 	}
 
 	// Bare "help" or "version" as positional arg
