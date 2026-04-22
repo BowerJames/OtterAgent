@@ -1,6 +1,16 @@
 // Re-export AgentEnvironment type from core.
 export type { AgentEnvironment } from "@otter-agent/core";
 
+// Public exports for the just-bash environment.
+export type {
+	JustBashAgentEnvironmentOptions,
+	JustBashToolName,
+} from "./environments/just-bash/index.js";
+export {
+	JustBashAgentEnvironment,
+	JustBashAgentEnvironmentTemplate,
+} from "./environments/just-bash/index.js";
+
 /**
  * Options for {@link buildAgentEnvironment}.
  */

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { AgentEnvironment, JustBashAgentEnvironment } from "../index.js";
+import { JustBashAgentEnvironment } from "./just-bash-agent-environment.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -26,13 +26,6 @@ async function exec(
 // ─── AgentEnvironment interface ───────────────────────────────────────────────
 
 describe("JustBashAgentEnvironment", () => {
-	test("factory method AgentEnvironment.justBash() returns an AgentEnvironment", () => {
-		const env = AgentEnvironment.justBash();
-		expect(env).toBeDefined();
-		expect(typeof env.getTools).toBe("function");
-		expect(typeof env.getSystemMessageAppend).toBe("function");
-	});
-
 	test("getTools() returns bash, read, write, edit", () => {
 		const env = makeEnv();
 		const names = env.getTools().map((t) => t.name);

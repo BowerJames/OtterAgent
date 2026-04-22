@@ -19,6 +19,8 @@
 	},
 	"dependencies": {
 		"@otter-agent/core": "*",
-		"@sinclair/typebox": "^0.34.0"
+		"@sinclair/typebox": "^0.34.0",
+		"diff": "^8.0.4",
+		"just-bash": "^2.14.0"
 	}
 }

@@ -1,9 +1,6 @@
+import { isSkillSupportedAgentEnvironment } from "@otter-agent/core";
 import { describe, expect, test, vi } from "vitest";
-import { isSkillSupportedAgentEnvironment } from "../../interfaces/skill-supported-agent-environment.js";
-import {
-	JustBashAgentEnvironment,
-	isJustBashAgentEnvironment,
-} from "./just-bash-agent-environment.js";
+import { JustBashAgentEnvironment } from "./just-bash-agent-environment.js";
 
 function makeEnv(options?: ConstructorParameters<typeof JustBashAgentEnvironment>[0]) {
 	return new JustBashAgentEnvironment(options);
@@ -23,20 +20,6 @@ describe("isSkillSupportedAgentEnvironment", () => {
 			getTools: () => [],
 		};
 		expect(isSkillSupportedAgentEnvironment(plain)).toBe(false);
-	});
-});
-
-// ─── isJustBashAgentEnvironment ───────────────────────────────────────────────
-
-describe("isJustBashAgentEnvironment", () => {
-	test("returns true for a JustBashAgentEnvironment instance", () => {
-		const env = makeEnv();
-		expect(isJustBashAgentEnvironment(env)).toBe(true);
-	});
-
-	test("returns false for a plain object", () => {
-		const plain = { getSystemMessageAppend: () => undefined, getTools: () => [] };
-		expect(isJustBashAgentEnvironment(plain)).toBe(false);
 	});
 });
 

@@ -44,8 +44,8 @@ export interface ExtensionContext {
 	 * interface. For example:
 	 *
 	 * ```ts
-	 * if (isJustBashAgentEnvironment(ctx.agentEnvironment)) {
-	 *   // access JustBashAgentEnvironment-specific methods here
+	 * if (isSkillSupportedAgentEnvironment(ctx.agentEnvironment)) {
+	 *   ctx.agentEnvironment.addSkill({ ... });
 	 * }
 	 * ```
 	 */

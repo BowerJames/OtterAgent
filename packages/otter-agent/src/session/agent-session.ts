@@ -11,7 +11,7 @@ import type {
 	ThinkingLevel,
 } from "@mariozechner/pi-agent-core";
 import type { Api, ImageContent, Model } from "@mariozechner/pi-ai";
-import { createEnvironmentExtension } from "../environments/environment-extension.js";
+import { createEnvironmentExtension } from "../environment/environment-extension.js";
 import type { CompactOptions } from "../extension-core/context.js";
 import { ExtensionRunner } from "../extension-core/extension-runner.js";
 import type { ExtensionRunnerActions } from "../extension-core/extension-runner.js";
