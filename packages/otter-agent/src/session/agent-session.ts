@@ -11,6 +11,7 @@ import type {
 	ThinkingLevel,
 } from "@mariozechner/pi-agent-core";
 import type { Api, ImageContent, Model } from "@mariozechner/pi-ai";
+import { createEnvironmentExtension } from "../environments/environment-extension.js";
 import type { CompactOptions } from "../extension-core/context.js";
 import { ExtensionRunner } from "../extension-core/extension-runner.js";
 import type { ExtensionRunnerActions } from "../extension-core/extension-runner.js";
@@ -40,10 +41,7 @@ export interface CreateAgentSessionResult {
  * but without `messages` — the factory always derives messages from
  * {@link SessionManager.buildSessionContext}.
  */
-export type CreateAgentSessionOptions = Omit<
-	AgentSessionOptions,
-	"messages" | "environmentTools" | "environmentAppend"
->;
+export type CreateAgentSessionOptions = Omit<AgentSessionOptions, "messages">;
 
 /**
  * Async factory that creates an AgentSession with session restore.
@@ -105,20 +103,12 @@ export async function createAgentSession(
 		await sessionManager.appendThinkingLevelChange(thinkingLevel);
 	}
 
-	// 9. Pre-resolve environment for async-compatible construction.
-	const [environmentTools, environmentAppend] = await Promise.all([
-		options.environment.getTools(),
-		options.environment.getSystemMessageAppend(),
-	]);
-
-	// 10. Construct and return.
+	// 9. Construct and return.
 	const session = new AgentSession({
 		...options,
 		model,
 		thinkingLevel,
 		messages: sessionContext.messages,
-		environmentTools,
-		environmentAppend,
 	});
 	return { session };
 }
@@ -149,7 +139,7 @@ export interface AgentSessionOptions {
 	/** The environment the agent operates in. */
 	environment: AgentEnvironment;
 
-	/** Base system prompt. Environment append and tool info will be added to this. */
+	/** Base system prompt. Tool info will be added to this during loadExtensions(). */
 	systemPrompt: string;
 
 	/** Initial model to use. */
@@ -174,26 +164,6 @@ export interface AgentSessionOptions {
 
 	/** Additional pi-agent-core Agent options. */
 	agentOptions?: Partial<AgentOptions>;
-
-	/**
-	 * Pre-resolved tools from the environment.
-	 *
-	 * Must be provided by all callers. Use {@link createAgentSession} for
-	 * automatic pre-resolution from an {@link AgentEnvironment} (including
-	 * async environments). Direct construction requires callers to resolve
-	 * these values themselves.
-	 */
-	environmentTools: ToolDefinition[];
-
-	/**
-	 * Pre-resolved system message append from the environment.
-	 *
-	 * Must be provided by all callers. Use {@link createAgentSession} for
-	 * automatic pre-resolution from an {@link AgentEnvironment} (including
-	 * async environments). Direct construction requires callers to resolve
-	 * these values themselves.
-	 */
-	environmentAppend: string | undefined;
 }
 
 /** Event types emitted by AgentSession (superset of pi-agent-core AgentEvent). */
@@ -210,6 +180,10 @@ type AgentSessionEventListener = (event: AgentSessionEvent) => void;
  * Wires together SessionManager, AuthStorage, AgentEnvironment, and
  * extensions. Delegates the agent loop, streaming, and tool execution
  * to the underlying Agent instance.
+ *
+ * Environment tools and system prompt append are contributed by a default
+ * environment extension that is automatically prepended during
+ * {@link loadExtensions}.
  */
 export class AgentSession {
 	/** The underlying pi-agent-core Agent instance. */
@@ -227,7 +201,6 @@ export class AgentSession {
 	private readonly _authStorage: AuthStorage;
 	private readonly _environment: AgentEnvironment;
 	private readonly _baseSystemPrompt: string;
-	private _environmentAppend: string | undefined;
 	private readonly _eventListeners: Set<AgentSessionEventListener> = new Set();
 	private readonly _extensionRunner: ExtensionRunner;
 	private _unsubscribeAgent: () => void;
@@ -254,22 +227,9 @@ export class AgentSession {
 		this._extensionRunner.setUIProvider(this.uiProvider);
 		this._extensionRunner.setModelRegistry(this.modelRegistry);
 
-		// Use pre-resolved environment values.
-		this._environmentAppend = options.environmentAppend;
-		const environmentTools = options.environmentTools;
-
-		// Register environment tools
-		for (const tool of environmentTools) {
-			this._toolDefinitions.set(tool.name, tool);
-			this._toolRegistry.set(tool.name, wrapToolDefinition(tool));
-			this._activeToolNames.add(tool.name);
-		}
-
-		// Build initial system prompt
+		// Build initial system prompt (base only — environment append and tools
+		// are added during loadExtensions() via the default environment extension).
 		const systemPrompt = this._getCurrentSystemPrompt();
-
-		// Build initial tool list
-		const tools = this._getActiveTools();
 
 		// Warn if agentOptions.initialState contains fields managed by AgentSession —
 		// they will be silently discarded. Point callers to the correct option.
@@ -292,7 +252,7 @@ export class AgentSession {
 				systemPrompt, // session values always win
 				model: options.model,
 				thinkingLevel: options.thinkingLevel ?? "off",
-				tools,
+				tools: [],
 				messages: options.messages ?? [],
 			},
 			convertToLlm: options.agentOptions?.convertToLlm ?? convertToLlm,
@@ -315,19 +275,22 @@ export class AgentSession {
 	 * Load extensions and fire session_start.
 	 * Call this after construction to initialise extensions.
 	 *
-	 * After session_start fires (extensions may have registered skills on the
-	 * environment), the system prompt is rebuilt and skill commands are registered.
+	 * A default environment extension is automatically prepended to register
+	 * the environment's tools and contribute its system prompt append via
+	 * `before_agent_start`. After session_start fires (extensions may have
+	 * registered skills on the environment), skill commands are registered.
 	 */
 	async loadExtensions(extensions?: Extension[]): Promise<void> {
 		if (extensions) {
 			this._extensions = extensions;
 		}
-		await this._extensionRunner.loadExtensions(this._extensions);
+
+		// Prepend the default environment extension so it loads first.
+		const allExtensions = [createEnvironmentExtension(this._environment), ...this._extensions];
+
+		await this._extensionRunner.loadExtensions(allExtensions);
 		await this._extensionRunner.emit({ type: "session_start" });
 
-		// Refresh the environment append now that extensions may have modified the
-		// environment (e.g. by registering skills on a SkillSupportedAgentEnvironment).
-		this._environmentAppend = await this._environment.getSystemMessageAppend();
 		this._applyToolChanges();
 		this._registerSkillCommands();
 	}
@@ -342,11 +305,13 @@ export class AgentSession {
 	 */
 	async reload(): Promise<void> {
 		this._extensionRunner.clear();
-		await this._extensionRunner.loadExtensions(this._extensions);
+
+		// Prepend the default environment extension so it loads first.
+		const allExtensions = [createEnvironmentExtension(this._environment), ...this._extensions];
+
+		await this._extensionRunner.loadExtensions(allExtensions);
 		await this._extensionRunner.emit({ type: "session_start" });
 
-		// Refresh environment append and skill commands after reload.
-		this._environmentAppend = await this._environment.getSystemMessageAppend();
 		this._applyToolChanges();
 		this._registerSkillCommands();
 	}
@@ -729,13 +694,14 @@ export class AgentSession {
 	}
 
 	/**
-	 * Build the current base system prompt (base + environment + tools).
+	 * Build the current base system prompt (base + tools).
 	 * This is the "resting" prompt that is always restored between turns.
+	 * Environment append is contributed via before_agent_start by the
+	 * default environment extension.
 	 */
 	private _getCurrentSystemPrompt(): string {
 		return buildSystemPrompt({
 			basePrompt: this._baseSystemPrompt,
-			environmentAppend: this._environmentAppend,
 			tools: this._getActiveToolDefinitions(),
 		});
 	}

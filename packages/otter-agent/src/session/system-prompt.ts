@@ -1,8 +1,8 @@
 /**
  * Pure function for assembling the system prompt from its components.
  *
- * Combines the base prompt, optional environment context, and
- * active tool information (snippets + guidelines) into a single string.
+ * Combines the base prompt and active tool information (snippets + guidelines)
+ * into a single string.
  */
 import type { ToolDefinition } from "../interfaces/tool-definition.js";
 
@@ -10,21 +10,16 @@ import type { ToolDefinition } from "../interfaces/tool-definition.js";
 export interface BuildSystemPromptOptions {
 	/** The base system prompt provided by the host application. */
 	basePrompt: string;
-	/** Optional environment context appended after the base prompt. */
-	environmentAppend?: string;
 	/** Active tool definitions whose snippets and guidelines are included. */
 	tools: ToolDefinition[];
 }
 
 /**
- * Build the full system prompt from base prompt, environment context,
- * and tool information.
+ * Build the full system prompt from base prompt and tool information.
  *
  * Layout:
  * ```
  * <basePrompt>
- *
- * <environmentAppend>          (if provided)
  *
  * # Available Tools             (if any tool has a promptSnippet)
  * - toolName: snippet
@@ -35,10 +30,6 @@ export interface BuildSystemPromptOptions {
  */
 export function buildSystemPrompt(options: BuildSystemPromptOptions): string {
 	const parts: string[] = [options.basePrompt];
-
-	if (options.environmentAppend) {
-		parts.push(options.environmentAppend);
-	}
 
 	const toolSection = buildToolSection(options.tools);
 	if (toolSection) {

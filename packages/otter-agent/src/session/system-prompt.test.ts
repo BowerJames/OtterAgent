@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 import type { ToolDefinition } from "../interfaces/tool-definition.js";
 import { buildSystemPrompt, buildToolSection } from "./system-prompt.js";
 
-// ─── Helpers ──────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────
 
 function createTool(
 	name: string,
@@ -33,15 +33,6 @@ describe("buildSystemPrompt", () => {
 		expect(result).toBe("You are a helpful assistant.");
 	});
 
-	test("base prompt with environment append", () => {
-		const result = buildSystemPrompt({
-			basePrompt: "Base.",
-			environmentAppend: "You are in Docker.",
-			tools: [],
-		});
-		expect(result).toBe("Base.\n\nYou are in Docker.");
-	});
-
 	test("base prompt with tools", () => {
 		const result = buildSystemPrompt({
 			basePrompt: "Base.",
@@ -52,38 +43,6 @@ describe("buildSystemPrompt", () => {
 		expect(result).toContain("- read: Read files");
 		expect(result).toContain("# Guidelines");
 		expect(result).toContain("- Use read for files");
-	});
-
-	test("all three components", () => {
-		const result = buildSystemPrompt({
-			basePrompt: "Base.",
-			environmentAppend: "Environment info.",
-			tools: [createTool("bash", { snippet: "Run commands" })],
-		});
-
-		const sections = result.split("\n\n");
-		expect(sections[0]).toBe("Base.");
-		expect(sections[1]).toBe("Environment info.");
-		expect(sections[2]).toContain("# Available Tools");
-		expect(sections[2]).toContain("- bash: Run commands");
-	});
-
-	test("empty environment append is excluded", () => {
-		const result = buildSystemPrompt({
-			basePrompt: "Base.",
-			environmentAppend: "",
-			tools: [],
-		});
-		expect(result).toBe("Base.");
-	});
-
-	test("undefined environment append is excluded", () => {
-		const result = buildSystemPrompt({
-			basePrompt: "Base.",
-			environmentAppend: undefined,
-			tools: [],
-		});
-		expect(result).toBe("Base.");
 	});
 
 	test("tools without snippets or guidelines produce no tool section", () => {

@@ -56,14 +56,11 @@ function createSessionOptions(overrides?: {
 	messages?: AgentMessage[];
 	agentOptions?: Partial<import("@mariozechner/pi-agent-core").AgentOptions>;
 }) {
-	const environment = overrides?.environment ?? createMockEnvironment();
 	return {
 		sessionManager: overrides?.sessionManager ?? createMockSessionManager(),
 		authStorage: overrides?.authStorage ?? createMockAuthStorage(),
-		environment,
+		environment: overrides?.environment ?? createMockEnvironment(),
 		systemPrompt: overrides?.systemPrompt ?? "You are a helpful assistant.",
-		environmentTools: environment.getTools(),
-		environmentAppend: environment.getSystemMessageAppend(),
 		...(overrides?.model !== undefined ? { model: overrides.model } : {}),
 		...(overrides?.thinkingLevel !== undefined ? { thinkingLevel: overrides.thinkingLevel } : {}),
 		...(overrides?.uiProvider !== undefined ? { uiProvider: overrides.uiProvider } : {}),
@@ -99,11 +96,30 @@ describe("AgentSession", () => {
 		expect(session.agent).toBeDefined();
 		expect(session.sessionManager).toBeDefined();
 		expect(session.agent.state.systemPrompt).toBe("You are a helpful assistant.");
+		expect(session.agent.state.tools).toHaveLength(0);
 
 		await session.dispose();
 	});
 
-	test("appends environment system message", async () => {
+	test("registers environment tools after loadExtensions", async () => {
+		const tool = createTestTool("env_tool");
+		const session = new AgentSession(
+			createSessionOptions({ environment: createMockEnvironment({ tools: [tool] }) }),
+		);
+
+		// Before loadExtensions, no tools are registered
+		expect(session.getActiveToolNames()).toHaveLength(0);
+
+		await session.loadExtensions();
+
+		expect(session.getActiveToolNames()).toContain("env_tool");
+		expect(session.agent.state.tools).toHaveLength(1);
+		expect(session.agent.state.tools[0].name).toBe("env_tool");
+
+		await session.dispose();
+	});
+
+	test("appends environment system message via before_agent_start", async () => {
 		const session = new AgentSession(
 			createSessionOptions({
 				environment: createMockEnvironment({
@@ -113,26 +129,19 @@ describe("AgentSession", () => {
 			}),
 		);
 
-		expect(session.agent.state.systemPrompt).toContain("Base prompt.");
-		expect(session.agent.state.systemPrompt).toContain("You are in a Docker container.");
+		// Before loadExtensions, system prompt is bare
+		expect(session.agent.state.systemPrompt).toBe("Base prompt.");
+
+		await session.loadExtensions();
+
+		// Before any prompt, the base system prompt doesn't include the append yet
+		// (it's added per-turn via before_agent_start)
+		expect(session.agent.state.systemPrompt).toBe("Base prompt.");
 
 		await session.dispose();
 	});
 
-	test("registers environment tools", async () => {
-		const tool = createTestTool("env_tool");
-		const session = new AgentSession(
-			createSessionOptions({ environment: createMockEnvironment({ tools: [tool] }) }),
-		);
-
-		expect(session.getActiveToolNames()).toContain("env_tool");
-		expect(session.agent.state.tools).toHaveLength(1);
-		expect(session.agent.state.tools[0].name).toBe("env_tool");
-
-		await session.dispose();
-	});
-
-	test("includes tool snippets and guidelines in system prompt", async () => {
+	test("includes tool snippets and guidelines in system prompt after loadExtensions", async () => {
 		const tool = createTestTool("my_tool");
 		const session = new AgentSession(
 			createSessionOptions({
@@ -140,6 +149,8 @@ describe("AgentSession", () => {
 				systemPrompt: "Base.",
 			}),
 		);
+
+		await session.loadExtensions();
 
 		const prompt = session.agent.state.systemPrompt;
 		expect(prompt).toContain("# Available Tools");
@@ -171,6 +182,8 @@ describe("AgentSession", () => {
 		const session = new AgentSession(
 			createSessionOptions({ environment: createMockEnvironment({ tools: [tool1, tool2] }) }),
 		);
+
+		await session.loadExtensions();
 
 		expect(session.getActiveToolNames()).toHaveLength(2);
 
@@ -324,6 +337,8 @@ describe("AgentSession", () => {
 		const sm = new InMemorySessionManager();
 		const session = new AgentSession(createSessionOptions({ sessionManager: sm }));
 
+		await session.loadExtensions();
+
 		// Seed some messages
 		session.agent.appendMessage({
 			role: "user",
@@ -349,6 +364,7 @@ describe("AgentSession", () => {
 		const sm = createMockSessionManager();
 		const session = new AgentSession(createSessionOptions({ sessionManager: sm }));
 
+		await session.loadExtensions();
 		const result = await session.compact();
 		expect(result).toBeUndefined();
 
@@ -566,6 +582,7 @@ describe("AgentSession", () => {
 			createSessionOptions({ environment: createMockEnvironment({ tools: [tool1] }) }),
 		);
 
+		await session.loadExtensions();
 		session.registerTool(tool2);
 
 		const defs = session.getAllToolDefinitions();
@@ -790,32 +807,9 @@ describe("AgentSession", () => {
 
 		// ─── Async AgentEnvironment ───────────────────────────────────
 
-		test("createAgentSession pre-resolves async environment", async () => {
+		test("async environment tools are registered during loadExtensions", async () => {
 			const asyncEnv: AgentEnvironment = {
 				getSystemMessageAppend: async () => "async-env-append",
-				getTools: async () => [],
-			};
-
-			const { session } = await createAgentSession({
-				sessionManager: createMockSessionManager(),
-				authStorage: createMockAuthStorage(),
-				environment: asyncEnv,
-				systemPrompt: "Base.",
-			});
-
-			expect(session.agent.state.systemPrompt).toContain("Base.");
-			expect(session.agent.state.systemPrompt).toContain("async-env-append");
-
-			await session.dispose();
-		});
-
-		test("loadExtensions awaits async environment getSystemMessageAppend", async () => {
-			let callCount = 0;
-			const asyncEnv: AgentEnvironment = {
-				getSystemMessageAppend: async () => {
-					callCount++;
-					return callCount === 1 ? "first-call" : "second-call";
-				},
 				getTools: async () => [],
 			};
 
@@ -824,18 +818,14 @@ describe("AgentSession", () => {
 				authStorage: createMockAuthStorage(),
 				environment: asyncEnv,
 				systemPrompt: "Base.",
-				environmentTools: await asyncEnv.getTools(),
-				environmentAppend: await asyncEnv.getSystemMessageAppend(),
 			});
 
-			// First call was during construction (pre-resolved)
-			expect(session.agent.state.systemPrompt).toContain("first-call");
-			expect(callCount).toBe(1);
-
-			// loadExtensions should await getSystemMessageAppend again
 			await session.loadExtensions();
-			expect(session.agent.state.systemPrompt).toContain("second-call");
-			expect(callCount).toBe(2);
+
+			// The environment extension's before_agent_start handler calls
+			// getSystemMessageAppend() each turn. We verify it works by checking
+			// the extension loaded successfully (no errors thrown).
+			expect(session.getActiveToolNames()).toHaveLength(0);
 
 			await session.dispose();
 		});

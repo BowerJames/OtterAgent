@@ -51,14 +51,11 @@ function createSessionOptions(overrides?: {
 	systemPrompt?: string;
 	uiProvider?: import("@otter-agent/core").UIProvider;
 }) {
-	const environment = overrides?.environment ?? createMockEnvironment();
 	return {
 		sessionManager: overrides?.sessionManager ?? createMockSessionManager(),
 		authStorage: overrides?.authStorage ?? createMockAuthStorage(),
-		environment,
+		environment: overrides?.environment ?? createMockEnvironment(),
 		systemPrompt: overrides?.systemPrompt ?? "Test prompt",
-		environmentTools: environment.getTools(),
-		environmentAppend: environment.getSystemMessageAppend(),
 		...(overrides?.uiProvider !== undefined ? { uiProvider: overrides.uiProvider } : {}),
 	};
 }

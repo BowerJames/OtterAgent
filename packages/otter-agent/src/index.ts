@@ -24,6 +24,7 @@ export {
 	JustBashAgentEnvironment,
 	JustBashAgentEnvironmentOptionsSchema,
 	JustBashAgentEnvironmentTemplate,
+	createEnvironmentExtension,
 	type JustBashAgentEnvironmentOptions,
 	type JustBashToolName,
 } from "./environments/index.js";
