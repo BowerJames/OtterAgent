@@ -68,8 +68,6 @@ function createSession(env: AgentEnvironment): AgentSession {
 		authStorage: createMockAuthStorage(),
 		environment: env,
 		systemPrompt: "You are a test agent.",
-		environmentTools: env.getTools(),
-		environmentAppend: env.getSystemMessageAppend(),
 	});
 }
 
