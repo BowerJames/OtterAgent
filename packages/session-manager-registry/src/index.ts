@@ -6,7 +6,6 @@ export {
 	InMemorySessionManager,
 	InMemorySessionManagerOptionsSchema,
 	InMemorySessionManagerTemplate,
-	createInMemorySessionManager,
 } from "./session-managers/in-memory/index.js";
 
 /**

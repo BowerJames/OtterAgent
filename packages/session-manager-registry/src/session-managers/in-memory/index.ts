@@ -169,14 +169,6 @@ export class InMemorySessionManager implements SessionManager {
 	}
 }
 
-/**
- * Creates a new in-memory {@link SessionManager} that stores all entries in
- * memory without any filesystem persistence.
- */
-export function createInMemorySessionManager(): InMemorySessionManager {
-	return new InMemorySessionManager();
-}
-
 // ─── ComponentTemplate ────────────────────────────────────────────────────────
 
 /** TypeBox schema for {@link InMemorySessionManager} options. */
@@ -193,5 +185,7 @@ export const InMemorySessionManagerTemplate: ComponentTemplate<
 > = {
 	configSchema: () => InMemorySessionManagerOptionsSchema,
 	defaultConfig: () => ({}),
-	build: (_config) => new InMemorySessionManager(),
+	build() {
+		return new InMemorySessionManager();
+	},
 };

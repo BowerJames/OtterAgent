@@ -14,18 +14,6 @@ export class InMemoryAuthStorage implements AuthStorage {
 	}
 }
 
-/**
- * Creates a new read-only in-memory {@link AuthStorage} seeded with the
- * provided provider-to-API-key map. Returns `undefined` for any provider
- * not present in the initial map.
- *
- * @param keys - Optional map of provider identifier to API key
- *   (e.g., `{ anthropic: "sk-ant-...", openai: "sk-..." }`).
- */
-export function createInMemoryAuthStorage(keys?: Record<string, string>): InMemoryAuthStorage {
-	return new InMemoryAuthStorage(keys);
-}
-
 // ─── ComponentTemplate ────────────────────────────────────────────────────────
 
 /** TypeBox schema for {@link InMemoryAuthStorage} options. */
@@ -45,5 +33,7 @@ export const InMemoryAuthStorageTemplate: ComponentTemplate<
 > = {
 	configSchema: () => InMemoryAuthStorageOptionsSchema,
 	defaultConfig: () => ({}),
-	build: ({ keys }) => new InMemoryAuthStorage(keys),
+	build({ keys }) {
+		return new InMemoryAuthStorage(keys);
+	},
 };
