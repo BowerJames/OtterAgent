@@ -9,23 +9,17 @@ export type {
 	ReadonlySessionManager,
 	ResourceLoader,
 	SessionContext,
+	SessionManager,
 	SessionManagerTemplate,
 	SkillDefinition,
 	SkillSupportedAgentEnvironment,
 	ToolDefinition,
+	UIProvider,
 } from "./interfaces/index.js";
 export { isSkillSupportedAgentEnvironment } from "./interfaces/index.js";
 
 // Default environment extension — wires any AgentEnvironment into the extension system.
 export { createEnvironmentExtension } from "./environment/environment-extension.js";
-// Built-in UIProvider implementations.
-// UIProvider is exported as both a type (the interface) and a value
-// (namespace with factory methods) via declaration merging in ui-providers/index.ts.
-export {
-	UIProvider,
-	NoOpUIProvider,
-	createNoOpUIProvider,
-} from "./ui-providers/index.js";
 
 // Built-in AuthStorage implementations.
 // AuthStorage is exported as both a type (the interface) and a value
@@ -42,22 +36,6 @@ export {
 	createSqliteAuthStorage,
 	type SqliteAuthStorageOptions,
 } from "./auth-storages/index.js";
-
-// Built-in SessionManager implementations.
-// SessionManager is exported as both a type (the interface) and a value
-// (namespace with factory methods) via declaration merging in session-managers/index.ts.
-export {
-	InMemorySessionManager,
-	InMemorySessionManagerOptionsSchema,
-	InMemorySessionManagerTemplate,
-	createInMemorySessionManager,
-	createSqliteSessionManager,
-	SessionManager,
-	SqliteSessionManager,
-	SqliteSessionManagerOptionsSchema,
-	SqliteSessionManagerTemplate,
-	type SqliteSessionManagerOptions,
-} from "./session-managers/index.js";
 
 // ExtensionsAPI
 export type {

@@ -5,8 +5,9 @@ import { describe, expect, test, vi } from "vitest";
 import type { Extension } from "../extension-core/extension.js";
 import type { AgentEnvironment } from "../interfaces/agent-environment.js";
 import type { AuthStorage } from "../interfaces/auth-storage.js";
-import type { SessionManager } from "../interfaces/session-manager.js";
+import type { Entry, SessionManager } from "../interfaces/session-manager.js";
 import type { ToolDefinition } from "../interfaces/tool-definition.js";
+import type { UIProvider } from "../interfaces/ui-provider.js";
 import { AgentSession, createAgentSession } from "./agent-session.js";
 import type { CompactionSummaryMessage } from "./messages.js";
 import { ModelRegistry } from "./model-registry.js";
@@ -44,6 +45,16 @@ function createMockEnvironment(options?: {
 	};
 }
 
+function createMockUIProvider(): UIProvider {
+	return {
+		dialog: vi.fn(async () => {}),
+		confirm: vi.fn(async () => false),
+		input: vi.fn(async () => undefined),
+		select: vi.fn(async () => undefined),
+		notify: vi.fn(),
+	};
+}
+
 function createSessionOptions(overrides?: {
 	environment?: AgentEnvironment;
 	systemPrompt?: string;
@@ -51,7 +62,7 @@ function createSessionOptions(overrides?: {
 	authStorage?: AuthStorage;
 	model?: Model<Api>;
 	thinkingLevel?: ThinkingLevel;
-	uiProvider?: import("../interfaces/ui-provider.js").UIProvider;
+	uiProvider?: UIProvider;
 	extensions?: Extension[];
 	messages?: AgentMessage[];
 	agentOptions?: Partial<import("@mariozechner/pi-agent-core").AgentOptions>;
@@ -61,13 +72,71 @@ function createSessionOptions(overrides?: {
 		authStorage: overrides?.authStorage ?? createMockAuthStorage(),
 		environment: overrides?.environment ?? createMockEnvironment(),
 		systemPrompt: overrides?.systemPrompt ?? "You are a helpful assistant.",
+		uiProvider: overrides?.uiProvider ?? createMockUIProvider(),
 		...(overrides?.model !== undefined ? { model: overrides.model } : {}),
 		...(overrides?.thinkingLevel !== undefined ? { thinkingLevel: overrides.thinkingLevel } : {}),
-		...(overrides?.uiProvider !== undefined ? { uiProvider: overrides.uiProvider } : {}),
 		...(overrides?.extensions !== undefined ? { extensions: overrides.extensions } : {}),
 		...(overrides?.messages !== undefined ? { messages: overrides.messages } : {}),
 		...(overrides?.agentOptions !== undefined ? { agentOptions: overrides.agentOptions } : {}),
 	};
+}
+
+/**
+ * Minimal in-memory SessionManager for tests that need real message tracking.
+ */
+class TestInMemorySessionManager implements SessionManager {
+	private readonly entries: Entry[] = [];
+	private nextId = 1;
+
+	private generateId(): string {
+		return String(this.nextId++);
+	}
+
+	async appendMessage(message: AgentMessage): Promise<string> {
+		const id = this.generateId();
+		this.entries.push({ type: "message", id, message });
+		return id;
+	}
+
+	async appendCustomMessageEntry(): Promise<string> {
+		return this.generateId();
+	}
+
+	async appendCustomEntry(): Promise<string> {
+		return this.generateId();
+	}
+
+	async appendModelChange(): Promise<string> {
+		return this.generateId();
+	}
+
+	async appendThinkingLevelChange(): Promise<string> {
+		return this.generateId();
+	}
+
+	async compact(summary?: string, firstKeptEntryId?: string): Promise<string> {
+		const id = this.generateId();
+		this.entries.push({ type: "compaction", id, summary, firstKeptEntryId, tokensBefore: 0 });
+		return id;
+	}
+
+	async appendLabel(): Promise<string> {
+		return this.generateId();
+	}
+
+	async getEntries(): Promise<Entry[]> {
+		return [...this.entries];
+	}
+
+	async buildSessionContext() {
+		const messages: AgentMessage[] = [];
+		for (const entry of this.entries) {
+			if (entry.type === "message") {
+				messages.push(entry.message);
+			}
+		}
+		return { messages, thinkingLevel: "off" as ThinkingLevel, model: null };
+	}
 }
 
 function createTestTool(name: string): ToolDefinition {
@@ -331,10 +400,7 @@ describe("AgentSession", () => {
 
 	test("compact syncs agent messages via replaceMessages", async () => {
 		// Use a real session manager to verify message sync
-		const { InMemorySessionManager } = await import(
-			"../session-managers/in-memory-session-manager.js"
-		);
-		const sm = new InMemorySessionManager();
+		const sm = new TestInMemorySessionManager();
 		const session = new AgentSession(createSessionOptions({ sessionManager: sm }));
 
 		await session.loadExtensions();

@@ -1,14 +1,7 @@
 import type { AgentMessage, ThinkingLevel } from "@mariozechner/pi-agent-core";
 import type { ImageContent, TextContent } from "@mariozechner/pi-ai";
-import { Type } from "@sinclair/typebox";
-import type { ComponentTemplate } from "../interfaces/component-template.js";
-import type {
-	Entry,
-	EntryId,
-	SessionContext,
-	SessionManager,
-} from "../interfaces/session-manager.js";
-import { createCompactionSummaryMessage, createCustomMessage } from "../session/messages.js";
+import { createCompactionSummaryMessage, createCustomMessage } from "@otter-agent/core";
+import type { Entry, EntryId, SessionContext, SessionManager } from "@otter-agent/core";
 
 export class InMemorySessionManager implements SessionManager {
 	private readonly entries: Entry[] = [];
@@ -164,28 +157,8 @@ export class InMemorySessionManager implements SessionManager {
 
 /**
  * Creates a new in-memory {@link SessionManager} that stores all entries in
- * memory without any filesystem persistence. Suitable for testing,
- * programmatic/embedded usage, and consumers who manage their own persistence.
+ * memory without any filesystem persistence.
  */
 export function createInMemorySessionManager(): InMemorySessionManager {
 	return new InMemorySessionManager();
 }
-
-// ─── ComponentTemplate ────────────────────────────────────────────────────────
-
-/** TypeBox schema for {@link InMemorySessionManager} options (no configuration needed). */
-export const InMemorySessionManagerOptionsSchema = Type.Object({});
-
-/**
- * {@link ComponentTemplate} for {@link InMemorySessionManager}.
- *
- * No configuration is required. Suitable for testing and short-lived sessions.
- */
-export const InMemorySessionManagerTemplate: ComponentTemplate<
-	typeof InMemorySessionManagerOptionsSchema,
-	InMemorySessionManager
-> = {
-	configSchema: () => InMemorySessionManagerOptionsSchema,
-	defaultConfig: () => ({}),
-	build: () => new InMemorySessionManager(),
-};

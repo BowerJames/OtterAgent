@@ -23,7 +23,6 @@ import type { EntryId, SessionManager } from "../interfaces/session-manager.js";
 import { isSkillSupportedAgentEnvironment } from "../interfaces/skill-supported-agent-environment.js";
 import type { ToolDefinition } from "../interfaces/tool-definition.js";
 import type { UIProvider } from "../interfaces/ui-provider.js";
-import { createNoOpUIProvider } from "../ui-providers/no-op-ui-provider.js";
 import { convertToLlm } from "./messages.js";
 import { ModelRegistry } from "./model-registry.js";
 import { buildSkillInvocationXml } from "./skill-invocation.js";
@@ -148,8 +147,8 @@ export interface AgentSessionOptions {
 	/** Initial thinking level. */
 	thinkingLevel?: ThinkingLevel;
 
-	/** Optional UI provider for extension interaction. Defaults to NoOp. */
-	uiProvider?: UIProvider;
+	/** UI provider for extension interaction. */
+	uiProvider: UIProvider;
 
 	/** Extensions to load. */
 	extensions?: Extension[];
@@ -192,7 +191,7 @@ export class AgentSession {
 	/** Session persistence manager. */
 	readonly sessionManager: SessionManager;
 
-	/** UI provider for extension interaction. Always set (defaults to NoOp). */
+	/** UI provider for extension interaction. */
 	readonly uiProvider: UIProvider;
 
 	/** Model registry for provider management. */
@@ -216,15 +215,14 @@ export class AgentSession {
 		this._authStorage = options.authStorage;
 		this._environment = options.environment;
 		this._baseSystemPrompt = options.systemPrompt;
-		this.uiProvider = options.uiProvider ?? createNoOpUIProvider();
+		this.uiProvider = options.uiProvider;
 		this._extensions = options.extensions ?? [];
 
 		// Create model registry
 		this.modelRegistry = new ModelRegistry(this._authStorage);
 
 		// Create extension runner
-		this._extensionRunner = new ExtensionRunner();
-		this._extensionRunner.setUIProvider(this.uiProvider);
+		this._extensionRunner = new ExtensionRunner(this.uiProvider);
 		this._extensionRunner.setModelRegistry(this.modelRegistry);
 
 		// Build initial system prompt (base only — environment append and tools
