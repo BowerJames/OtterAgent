@@ -5,7 +5,7 @@ import { describe, expect, test } from "vitest";
 import { parseCliArgs } from "./args.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const cliPath = resolve(__dirname, "../../dist/cli/cli.js");
+const cliPath = resolve(__dirname, "../dist/cli.js");
 
 function runCli(args: string[]): Promise<{ exitCode: number | null; stderr: string }> {
 	return new Promise((resolve, reject) => {

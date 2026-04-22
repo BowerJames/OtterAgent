@@ -59,6 +59,12 @@ function createMockTransport(): MockTransport {
 	return transport;
 }
 
+/** Shared required options for createRpcSession tests. */
+const requiredOptions = {
+	authStorage: createMockAuthStorage(),
+	sessionManager: createMockSessionManager(),
+};
+
 // ─── Tests ────────────────────────────────────────────────────────────
 
 describe("createRpcSession", () => {
@@ -68,6 +74,7 @@ describe("createRpcSession", () => {
 			transport,
 			environment: createMockEnvironment(),
 			systemPrompt: "Test prompt",
+			...requiredOptions,
 		});
 
 		expect(session).toBeDefined();
@@ -82,6 +89,7 @@ describe("createRpcSession", () => {
 			transport,
 			environment: createMockEnvironment(),
 			systemPrompt: "Test prompt",
+			...requiredOptions,
 		});
 
 		handler.start();
@@ -105,6 +113,7 @@ describe("createRpcSession", () => {
 			transport,
 			environment: createMockEnvironment(),
 			systemPrompt: "Test prompt",
+			...requiredOptions,
 		});
 
 		handler.start();
@@ -138,6 +147,7 @@ describe("createRpcSession", () => {
 			transport,
 			environment: createMockEnvironment(),
 			systemPrompt: "Test prompt",
+			...requiredOptions,
 		});
 
 		handler.start();
@@ -157,6 +167,7 @@ describe("createRpcSession", () => {
 			transport,
 			environment: createMockEnvironment(),
 			systemPrompt: "Test prompt",
+			...requiredOptions,
 		});
 
 		handler.start();
@@ -176,6 +187,7 @@ describe("createRpcSession", () => {
 			transport,
 			environment: createMockEnvironment(),
 			systemPrompt: "Test prompt",
+			...requiredOptions,
 		});
 
 		handler.start();
@@ -196,21 +208,7 @@ describe("createRpcSession", () => {
 		handler.stop();
 	});
 
-	test("defaults authStorage and sessionManager to in-memory", async () => {
-		const transport = createMockTransport();
-		const { session } = await createRpcSession({
-			transport,
-			environment: createMockEnvironment(),
-			systemPrompt: "Test prompt",
-		});
-
-		// Session should work with defaults — no crash means success
-		expect(session.agent).toBeDefined();
-		expect(session.sessionManager).toBeDefined();
-		expect(session.modelRegistry).toBeDefined();
-	});
-
-	test("accepts explicit authStorage and sessionManager", async () => {
+	test("requires authStorage and sessionManager", async () => {
 		const transport = createMockTransport();
 		const authStorage = createMockAuthStorage();
 		const sessionManager = createMockSessionManager();
@@ -223,7 +221,9 @@ describe("createRpcSession", () => {
 			sessionManager,
 		});
 
+		expect(session.agent).toBeDefined();
 		expect(session.sessionManager).toBe(sessionManager);
+		expect(session.modelRegistry).toBeDefined();
 	});
 
 	test("onShutdown is threaded through to handler", async () => {
@@ -234,6 +234,7 @@ describe("createRpcSession", () => {
 			transport,
 			environment: createMockEnvironment(),
 			systemPrompt: "Test prompt",
+			...requiredOptions,
 			onShutdown,
 		});
 

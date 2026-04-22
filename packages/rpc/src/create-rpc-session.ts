@@ -11,13 +11,12 @@
  */
 import type { AgentOptions, ThinkingLevel } from "@mariozechner/pi-agent-core";
 import type { Api, Model } from "@mariozechner/pi-ai";
-import { createAgentSession, createInMemoryAuthStorage } from "@otter-agent/core";
+import { createAgentSession } from "@otter-agent/core";
 import type { Extension } from "@otter-agent/core";
 import type { AgentEnvironment } from "@otter-agent/core";
 import type { AuthStorage } from "@otter-agent/core";
 import type { SessionManager } from "@otter-agent/core";
 import type { AgentSession } from "@otter-agent/core";
-import { createInMemorySessionManager } from "./in-memory-session-manager.js";
 import { RpcHandler } from "./rpc-handler.js";
 import { createRpcUIProvider } from "./rpc-ui-provider.js";
 import type { RpcTransport } from "./types.js";
@@ -27,8 +26,7 @@ import type { RpcTransport } from "./types.js";
  *
  * This is a standalone interface — it does not extend `CreateAgentSessionOptions`
  * because `uiProvider` is provided internally by this factory and should not
- * be part of the public options. `authStorage` and `sessionManager` default
- * to their in-memory implementations if not provided.
+ * be part of the public options. All components are required.
  */
 export interface CreateRpcSessionOptions {
 	/** The RPC transport to communicate over. */
@@ -40,17 +38,11 @@ export interface CreateRpcSessionOptions {
 	/** Base system prompt. Environment append and tool info will be added. */
 	systemPrompt: string;
 
-	/**
-	 * Credential retrieval for LLM providers.
-	 * Defaults to `createInMemoryAuthStorage()` (no credentials).
-	 */
-	authStorage?: AuthStorage;
+	/** Credential retrieval for LLM providers. */
+	authStorage: AuthStorage;
 
-	/**
-	 * Session persistence manager.
-	 * Defaults to `createInMemorySessionManager()`.
-	 */
-	sessionManager?: SessionManager;
+	/** Session persistence manager. */
+	sessionManager: SessionManager;
 
 	/** Initial model to use. */
 	model?: Model<Api>;
@@ -93,8 +85,8 @@ export async function createRpcSession(
 
 	// 2. Create the session with UIProvider baked in
 	const { session } = await createAgentSession({
-		authStorage: options.authStorage ?? createInMemoryAuthStorage(),
-		sessionManager: options.sessionManager ?? createInMemorySessionManager(),
+		authStorage: options.authStorage,
+		sessionManager: options.sessionManager,
 		environment: options.environment,
 		systemPrompt: options.systemPrompt,
 		model: options.model,

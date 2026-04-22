@@ -1,7 +1,10 @@
 {
-	"name": "@otter-agent/rpc",
+	"name": "@otter-agent/cli",
 	"version": "0.0.1",
 	"type": "module",
+	"bin": {
+		"otter": "./dist/cli.js"
+	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"exports": {
@@ -18,9 +21,10 @@
 		"dev": "tsc --watch"
 	},
 	"dependencies": {
-		"@mariozechner/pi-agent-core": "^0.64.0",
-		"@mariozechner/pi-ai": "^0.64.0",
 		"@otter-agent/core": "*",
-		"@sinclair/typebox": "^0.34.0"
+		"@otter-agent/rpc": "*",
+		"@otter-agent/session-manager-registry": "*",
+		"@sinclair/typebox": "^0.34.0",
+		"yaml": "^2.7.0"
 	}
 }
