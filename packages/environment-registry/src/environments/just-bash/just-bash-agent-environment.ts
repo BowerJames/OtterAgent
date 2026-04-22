@@ -1,12 +1,14 @@
+import type {
+	AgentEnvironment,
+	ComponentTemplate,
+	SkillDefinition,
+	SkillSupportedAgentEnvironment,
+	ToolDefinition,
+} from "@otter-agent/core";
 import { Type } from "@sinclair/typebox";
 import { Bash } from "just-bash";
 import type { BashOptions, CommandName, InitialFiles, NetworkConfig } from "just-bash";
-import type { AgentEnvironment } from "../../interfaces/agent-environment.js";
-import type { ComponentTemplate } from "../../interfaces/component-template.js";
-import type { SkillDefinition } from "../../interfaces/skill-definition.js";
-import type { SkillSupportedAgentEnvironment } from "../../interfaces/skill-supported-agent-environment.js";
-import type { ToolDefinition } from "../../interfaces/tool-definition.js";
-import { escapeXml } from "../../utils/xml.js";
+import { escapeXml } from "../../utils/escape-xml.js";
 import { createBashToolDefinition } from "./tools/bash.js";
 import { createEditToolDefinition } from "./tools/edit.js";
 import { createReadToolDefinition } from "./tools/read.js";
@@ -176,9 +178,6 @@ export class JustBashAgentEnvironment implements AgentEnvironment, SkillSupporte
 	 * Not part of {@link SkillSupportedAgentEnvironment} — this is specific to
 	 * `JustBashAgentEnvironment` because it exposes skills via the `read` tool and
 	 * the agent needs the file path to load them.
-	 *
-	 * Use the {@link isJustBashAgentEnvironment} type guard to narrow an
-	 * {@link AgentEnvironment} before calling this method.
 	 */
 	getSkillFilePath(name: string): string | undefined {
 		if (!this._skills.has(name)) return undefined;
@@ -278,18 +277,6 @@ export class JustBashAgentEnvironment implements AgentEnvironment, SkillSupporte
 		const base = this._cwd.endsWith("/") ? this._cwd.slice(0, -1) : this._cwd;
 		return `${base}/skills/${name}/SKILL.md`;
 	}
-}
-
-/**
- * Type guard that narrows an {@link AgentEnvironment} to
- * {@link JustBashAgentEnvironment}.
- *
- * Use this before accessing JustBash-specific methods (e.g.
- * {@link JustBashAgentEnvironment.getSkillFilePath}) that are not part of
- * any shared interface.
- */
-export function isJustBashAgentEnvironment(env: object): env is JustBashAgentEnvironment {
-	return env instanceof JustBashAgentEnvironment;
 }
 
 // ─── ComponentTemplate ────────────────────────────────────────────────────────

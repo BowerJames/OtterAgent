@@ -22,7 +22,14 @@ describe("buildAgentEnvironment", () => {
 
 	it("throws Error for unknown environment name", () => {
 		expect(() => buildAgentEnvironment({ name: "nonexistent", config: {} })).toThrow(
-			'Unknown environment "nonexistent". Registered environments: no-op',
+			'Unknown environment "nonexistent". Registered environments: no-op, just-bash',
 		);
+	});
+
+	it("builds 'just-bash' environment with default config", () => {
+		const env = buildAgentEnvironment({ name: "just-bash", config: {} });
+		const tools = env.getTools();
+		expect(tools.map((t) => t.name)).toEqual(["bash", "read", "write", "edit"]);
+		expect(env.getSystemMessageAppend()).toContain("virtual filesystem");
 	});
 });

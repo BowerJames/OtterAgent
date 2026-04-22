@@ -17,8 +17,12 @@ import type { ToolDefinition } from "./tool-definition.js";
  * type guards to access richer APIs on concrete implementations. For example:
  *
  * ```ts
- * if (isJustBashAgentEnvironment(ctx.agentEnvironment)) {
- *   // access JustBashAgentEnvironment-specific methods here
+ * if (isSkillSupportedAgentEnvironment(ctx.agentEnvironment)) {
+ *   ctx.agentEnvironment.addSkill({
+ *     name: "my-skill",
+ *     description: "What this skill does",
+ *     content: "Instructions for the agent...",
+ *   });
  * }
  * ```
  */

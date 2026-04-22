@@ -1,5 +1,6 @@
 // OtterAgent interfaces
 export type {
+	AgentEnvironment,
 	AgentEnvironmentTemplate,
 	AuthStorageTemplate,
 	ComponentTemplate,
@@ -15,19 +16,8 @@ export type {
 } from "./interfaces/index.js";
 export { isSkillSupportedAgentEnvironment } from "./interfaces/index.js";
 
-// Built-in AgentEnvironment implementations.
-// AgentEnvironment is exported as both a type (the interface) and a value
-// (namespace with factory methods) via declaration merging in environments/agent-environment.ts.
-export {
-	AgentEnvironment,
-	isJustBashAgentEnvironment,
-	JustBashAgentEnvironment,
-	JustBashAgentEnvironmentOptionsSchema,
-	JustBashAgentEnvironmentTemplate,
-	createEnvironmentExtension,
-	type JustBashAgentEnvironmentOptions,
-	type JustBashToolName,
-} from "./environments/index.js";
+// Default environment extension — wires any AgentEnvironment into the extension system.
+export { createEnvironmentExtension } from "./environment/environment-extension.js";
 // Built-in UIProvider implementations.
 // UIProvider is exported as both a type (the interface) and a value
 // (namespace with factory methods) via declaration merging in ui-providers/index.ts.

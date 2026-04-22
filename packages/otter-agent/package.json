@@ -21,9 +21,7 @@
 		"@mariozechner/pi-agent-core": "^0.64.0",
 		"@mariozechner/pi-ai": "^0.64.0",
 		"@sinclair/typebox": "^0.34.0",
-		"better-sqlite3": "^11.0.0",
-		"diff": "^8.0.4",
-		"just-bash": "^2.14.0"
+		"better-sqlite3": "^11.0.0"
 	},
 	"devDependencies": {
 		"@mariozechner/pi-coding-agent": "^0.64.0",

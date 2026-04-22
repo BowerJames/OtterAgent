@@ -1,6 +1,6 @@
+import type { ToolDefinition } from "@otter-agent/core";
 import { Type } from "@sinclair/typebox";
 import type { Bash } from "just-bash";
-import type { ToolDefinition } from "../../../interfaces/tool-definition.js";
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize, truncateTail } from "../truncate.js";
 
 const bashSchema = Type.Object({

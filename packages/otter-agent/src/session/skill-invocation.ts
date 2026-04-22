@@ -1,5 +1,5 @@
 import type { SkillDefinition } from "../interfaces/skill-definition.js";
-import { escapeXml } from "../utils/xml.js";
+import { escapeXml } from "../utils/escape-xml.js";
 
 /**
  * Build the XML block injected into the conversation when a skill is invoked.
