@@ -23,7 +23,7 @@ npm run build
 Build a specific package:
 
 ```bash
-cd packages/otter-agent
+cd packages/core
 npm run build
 ```
 
@@ -38,7 +38,7 @@ npm test
 Run tests for a specific package:
 
 ```bash
-cd packages/otter-agent
+cd packages/core
 npx vitest run
 ```
 

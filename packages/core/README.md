@@ -17,7 +17,7 @@ npm install @otter-agent/core
 ### GitHub dependency (works without an npm account)
 
 ```bash
-npm install github:BowerJames/OtterAgent#packages/otter-agent
+npm install github:BowerJames/OtterAgent#packages/core
 ```
 
 ### Local / monorepo workspace
