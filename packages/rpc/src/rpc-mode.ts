@@ -35,8 +35,6 @@ export interface RunRpcModeOptions {
 	extensions?: Extension[];
 	/** Additional pi-agent-core Agent options. */
 	agentOptions?: Partial<AgentOptions>;
-	/** Called when graceful shutdown completes. */
-	onShutdown?: () => void;
 }
 
 export async function runRpcMode(options: RunRpcModeOptions): Promise<void> {
