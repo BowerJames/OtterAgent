@@ -79,3 +79,6 @@ The code review can take a long time so provide a timeout of 1000 seconds.
 - **Vitest** — used for testing
 - Each package has its own `tsconfig.json` extending the root config
 - Build output goes to `dist/` in each package
+
+## CLI Development Guidelines
+- All CLI entrypoints must support `--help` to display usage information.
